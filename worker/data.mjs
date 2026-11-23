@@ -58,10 +58,10 @@ async function readBoundedJson(request) {
   }
 }
 
-export async function handleHomesData(request, env, subject, respond) {
+export async function handleHomesData(request, env, member, respond) {
   const json = (status, val) => respond(status, JSON.stringify(val), {type:'application/json; charset=utf-8'});
   const error = (status, code) => json(status, {error:code});
-  if (!subject) return error(401, 'unauthorized');
+  if (!member) return error(401, 'unauthorized');
   if (!env.HOME_STORE || typeof env.HOMES_HOUSEHOLD_ID !== 'string' || !householdPattern.test(env.HOMES_HOUSEHOLD_ID)) return error(503, 'unavailable');
   const {pathname, search, origin} = new URL(request.url);
   const {method} = request;
@@ -86,7 +86,7 @@ export async function handleHomesData(request, env, subject, respond) {
     if (status !== 200) return error(status,value);
     const input = validateFields(kind, method, value);
     if (!input) return error(400,'invalid_input');
-    const result = await store.mutate(kind, method, id ?? null, input);
+    const result = await store.mutate(kind, method, id ?? null, input, kind === 'todos' ? member.alias : null);
     if (result.error === 'version_conflict') return error(409, result.error);
     if (result.error === 'quota_exceeded') return error(409, result.error);
     if (result.error === 'not_found') return error(404, result.error);

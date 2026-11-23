@@ -98,10 +98,10 @@ test('create, edit, delete version contract and conflict, quota and missing resp
   const f=fixture();
   const post=await f.write('/api/todos','POST',{title:' 買い物 ',dueDate:'2028-02-29'});
   assert.equal(post.status,201);
-  assert.deepEqual(f.mutation(),['todos','POST',null,{title:'買い物',dueDate:'2028-02-29'}]);
+  assert.deepEqual(f.mutation(),['todos','POST',null,{title:'買い物',dueDate:'2028-02-29'},'管理者']);
   const patch=await f.write('/api/todos/'+id,'PATCH',{version:1,completed:true,dueDate:null});
   assert.equal(patch.status,200);
-  assert.deepEqual(f.mutation(),['todos','PATCH',id,{version:1,completed:true,dueDate:null}]);
+  assert.deepEqual(f.mutation(),['todos','PATCH',id,{version:1,completed:true,dueDate:null},'管理者']);
   f.setResult({error:'version_conflict'});
   assert.deepEqual(await (await f.write('/api/todos/'+id,'PATCH',{version:1,completed:false})).json(),{error:'version_conflict'});
   assert.equal((await f.write('/api/todos/'+id,'DELETE',{version:1})).status,409);
@@ -126,4 +126,32 @@ test('validates date-only roundtrip, title/body size and exact shape', () => {
   ];
   for (const args of cases) assert.equal(validateFields(...args),null);
   assert.deepEqual(validateFields('notes','PATCH',{version:2,body:'<img>\ntext'}),{version:2,body:'<img>\ntext'});
+});
+
+test('family mode uses server-only aliases and revokes removed members with valid sessions', async () => {
+  const f = fixture();
+  const members = [
+    {email:'alice@gmail.com', alias:'家族A'},
+    {email:'bob@example.test', sub:'subject-b', alias:'家族B'}
+  ];
+  f.env.HOMES_FAMILY_MEMBERS = JSON.stringify(members);
+  assert.equal((await f.call('/api/home')).status, 401); // Legacy owner omitted from family mode.
+  f.setSubject({email:'alice@gmail.com', sub:'subject-a'});
+  assert.equal((await f.write('/api/todos','POST',{title:'共有'})).status, 201);
+  assert.equal(f.mutation().at(-1), '家族A');
+  for (const key of ['createdBy','updatedBy','completedBy','actor']) {
+    assert.equal((await f.write('/api/todos/'+id,'PATCH',{version:1,completed:true,[key]:'spoof'})).status, 400);
+  }
+  f.setSubject({email:'bob@example.test', sub:'other-b'});
+  assert.equal((await f.call('/api/home')).status, 401);
+  f.setSubject({email:'bob@example.test', sub:'subject-b'});
+  assert.equal((await f.write('/api/todos/'+id,'PATCH',{version:1,completed:true})).status, 200);
+  assert.equal(f.mutation().at(-1), '家族B');
+  f.env.HOMES_FAMILY_MEMBERS = JSON.stringify(members.slice(0, 1));
+  assert.equal((await f.call('/api/home')).status, 401);
+  for (const raw of ['', '{}', '[]', JSON.stringify([...members,{email:'x@gmail.com',alias:'家族A'}]),
+    JSON.stringify([{email:'x@example.test',alias:'家族C'}])]) {
+    f.env.HOMES_FAMILY_MEMBERS = raw;
+    assert.equal((await f.call('/api/home')).status, 503);
+  }
 });

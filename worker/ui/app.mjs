@@ -36,11 +36,37 @@ function panel(title,sub,body,button=''){
   return '<article class="card list-card"><div class="card-head"><div><h2>'+html(title)+'</h2>'+(sub?'<p>'+html(sub)+'</p>':'')+'</div>'+button+'</div>'+body+'</article>';
 }
 function action(k){const name=services[k][0];return '<button type="button" class="icon-btn" data-create="'+k+'" aria-label="'+name+'を追加" title="'+name+'を追加">'+svg('plus')+'</button>';}
+function actorName(value){
+ return typeof value==='string'?value.trim():'';
+}
+function todoActorCaption(x){
+ const completion=actorName(x.completedBy),updated=actorName(x.updatedBy),created=actorName(x.createdBy);
+ if(x.completed&&completion)return '完了：'+completion;
+ if(updated&&(!created||x.updatedAt!==x.createdAt||updated!==created))return '更新：'+updated;
+ return created?'作成：'+created:'';
+}
+const attribution=document.createElement('dl');
+attribution.className='task-attribution';
+attribution.setAttribute('aria-label','ToDoの操作記録');
+attribution.hidden=true;
+$('#editor-error').before(attribution);
+function showTodoAttribution(task){
+ attribution.replaceChildren();
+ attribution.hidden=!task;
+ if(!task)return;
+ const entries=[['作成',task.createdBy],['最終更新',task.updatedBy]];
+ if(task.completed)entries.push(['完了',task.completedBy]);
+ for(const [label,actor] of entries){
+  const row=document.createElement('div'),term=document.createElement('dt'),value=document.createElement('dd');
+  term.textContent=label;value.textContent=actorName(actor)||'記録なし';row.append(term,value);attribution.append(row);
+ }
+}
 function todoRow(x,today){
  const id=html(x.id),label=html(x.title),completed=!!x.completed,late=!completed&&x.dueDate&&x.dueDate<today;
  const date=x.dueDate?dateLabel(x.dueDate):'';
+ const actor=todoActorCaption(x);
  const badge=completed?'完了':late?'期限超過':x.dueDate===today?'今日':x.dueDate?date:'期限なし';
- return '<div class="row"><button type="button" class="check" data-toggle="'+id+'" aria-pressed="'+completed+'" aria-label="'+label+'：'+(completed?'未完了に戻す':'完了にする')+'" '+(pending?'disabled':'')+'><span>'+(completed?svg('check'):'')+'</span></button><span class="row-text"><span class="row-title">'+label+'</span>'+(date&&date!==badge?'<span class="caption">'+date+'</span>':'')+'</span><span class="chip '+(late?'red':completed?'green':'')+'">'+badge+'</span>'+(late?'<button type="button" data-reschedule="'+id+'" aria-label="'+label+'の期限を変更">変更</button>':'')+'<button type="button" class="icon-btn" data-edit="'+id+'" aria-label="'+label+'を編集" title="編集">'+svg('edit')+'</button></div>';
+ return '<div class="row"><button type="button" class="check" data-toggle="'+id+'" aria-pressed="'+completed+'" aria-label="'+label+'：'+(completed?'未完了に戻す':'完了にする')+'" '+(pending?'disabled':'')+'><span>'+(completed?svg('check'):'')+'</span></button><span class="row-text"><span class="row-title">'+label+'</span>'+((actor||date&&date!==badge)?'<span class="caption task-row-caption">'+(date&&date!==badge?'<span>'+date+'</span>':'')+(actor?'<span>'+html(actor)+'</span>':'')+'</span>':'')+'</span><span class="chip '+(late?'red':completed?'green':'')+'">'+badge+'</span>'+(late?'<button type="button" data-reschedule="'+id+'" aria-label="'+label+'の期限を変更">変更</button>':'')+'<button type="button" class="icon-btn" data-edit="'+id+'" aria-label="'+label+'を編集" title="編集">'+svg('edit')+'</button></div>';
 }
 function render(){
  const node=$('#primary-content');node.setAttribute('aria-busy',String(loading||pending));
@@ -99,7 +125,7 @@ function openEditor(k,x,trigger,date=false){
   $('#entry-title').value=x?.title??'';$('#entry-date').value=x?.dueDate??'';$('#entry-body').value=x?.body??'';
   $('#title-row').hidden=date;$('#entry-title').required=!date;
   $('#date-row').hidden=k!=='todo';$('#body-row').hidden=k!=='notes';
-  $('#ask-delete').hidden=!x||date;$('#confirm-row').hidden=$('#leave-row').hidden=true;editorError('');setPending(false);
+  $('#ask-delete').hidden=!x||date;showTodoAttribution(k==='todo'&&!date?x:null);$('#confirm-row').hidden=$('#leave-row').hidden=true;editorError('');setPending(false);
   active.before=formValues(k);
   $('#editor').showModal();(date?$('#entry-date'):$('#entry-title')).focus();
 }
@@ -140,7 +166,8 @@ async function reloadEditor(){
  const a=active;if(!await load({keepError:true})||active!==a)return;
  if(a.id===null){editorError('一覧を更新しました。重複を防ぐため、いったん一覧で保存結果を確認してください。入力は閉じるまでは残ります。');return;}
  const recent=find(a.kind,a.id);
- if(!recent){editorError('この項目は既に削除されています。入力は閉じるまでは残ります。');return;}
+ if(!recent){showTodoAttribution(null);editorError('この項目は既に削除されています。入力は閉じるまでは残ります。');return;}
+ if(a.kind==='todo'&&a.mode==='full')showTodoAttribution(recent);
  const changed=recent.version!==a.version;
  if(changed){a.version=recent.version;a.before=a.kind==='todo'?{title:recent.title,dueDate:recent.dueDate}:{title:recent.title,body:recent.body};if(a.mode==='date')$('#entry-title').value=recent.title;}
  a.blocked=false;$('#save-entry').disabled=$('#ask-delete').disabled=false;editorError(changed?'最新版を読み込みました。下書きの内容で上書きする前に、以下の最新内容を確認してください。':'一覧を更新しました。下書きを保持しています。');
@@ -149,7 +176,7 @@ async function reloadEditor(){
 const dialogTriggers=new WeakMap();
 function quickDialog(id,b){const d=$('#'+id);dialogTriggers.set(d,b);d.showModal();}
 $('#editor').addEventListener('cancel',e=>{e.preventDefault();closeEditor();});
-$('#editor').addEventListener('close',()=>{const trigger=active?.trigger;active=null;$('#editor-form').reset();editorError('');if(trigger?.isConnected&&!trigger.disabled)trigger.focus();else $('#main').focus();});
+$('#editor').addEventListener('close',()=>{const trigger=active?.trigger;active=null;$('#editor-form').reset();editorError('');showTodoAttribution(null);if(trigger?.isConnected&&!trigger.disabled)trigger.focus();else $('#main').focus();});
 for(const d of document.querySelectorAll('dialog:not(#editor)'))d.addEventListener('close',()=>dialogTriggers.get(d)?.focus());
 $('#editor-form').addEventListener('submit',e=>{e.preventDefault();void save();});
 $('#note-tools').addEventListener('submit',e=>e.preventDefault());

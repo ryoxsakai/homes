@@ -19,3 +19,10 @@ dialog{width:min(calc(100vw - 32px),430px);border:0;border-radius:12px;padding:0
 @media(max-width:1023px){.notes-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){main{padding-bottom:calc(95px + env(safe-area-inset-bottom))}.notes-grid{grid-template-columns:minmax(0,1fr);gap:12px}.notes-grid,.note-tools,.error:not(:empty),.session-expired{margin-inline:16px}.note-card{min-height:110px}.row{gap:7px}.row [data-reschedule]{padding:0 4px}.row>.chip{font-size:.77rem;padding:2px 7px}.row .icon-btn{margin-right:-8px}.screenbar{z-index:2}}
 .dlg-status details{margin-top:8px;color:var(--muted)}.dlg-status summary{min-height:44px;display:list-item;align-content:center;cursor:pointer}.dlg-status pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:160px;overflow:auto;padding:8px;margin:0;background:var(--track);border-radius:8px;font:inherit}
+
+/* One quiet activity label per list row; three explicit operations in details. */
+.task-row-caption{display:flex;flex-wrap:wrap;column-gap:10px;overflow-wrap:anywhere}
+.task-row-caption span{min-width:0}
+.task-attribution{display:grid;gap:4px;padding:10px 12px;margin:0;border-radius:8px;background:var(--track);color:var(--muted);font-size:.86rem}
+.task-attribution div{display:grid;grid-template-columns:4.8em minmax(0,1fr);gap:8px}
+.task-attribution dt{font-weight:700}.task-attribution dd{margin:0;overflow-wrap:anywhere}
