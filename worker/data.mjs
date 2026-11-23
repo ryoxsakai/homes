@@ -95,4 +95,3 @@ export async function handleHomesData(request, env, subject, respond) {
     return error(503, 'unavailable');
   }
 }
-
