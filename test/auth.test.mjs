@@ -58,7 +58,14 @@ test('successful sign-in sets secure host-only state and session cookies; releas
   assert.equal(r.headers.get('Cache-Control'),'no-store');
   assert.match(r.headers.getSetCookie().find(x=>x.startsWith(sidCookie)), /Max-Age=28800; Path=\/; Secure; HttpOnly; SameSite=Lax/);
   const headers = {Cookie:cookie(r,sidCookie)};
-  const home = await (await f.call('/',{headers})).text();
+  const homeResponse = await f.call('/',{headers});
+  assert.equal(homeResponse.headers.get('Referrer-Policy'), 'same-origin');
+  assert.equal(s.r.headers.get('Referrer-Policy'), 'no-referrer');
+  assert.equal(r.headers.get('Referrer-Policy'), 'no-referrer');
+  const clean = await f.call('/?unexpected=secret',{headers});
+  assert.equal(clean.headers.get('Location'), '/');
+  assert.equal(clean.headers.get('Referrer-Policy'), 'no-referrer');
+  const home = await homeResponse.text();
   assert.match(home,/ログイン済み/);
   assert.doesNotMatch(home,/owner@gmail|test-id/);
 });
@@ -92,6 +99,7 @@ test('tampered or expired session, cross-origin logout and logged-out replay', a
   const fake = sid.slice(0,-1)+(sid.endsWith('A')?'B':'A');
   assert.doesNotMatch(await (await f.call('/',{headers:{Cookie:fake}})).text(), /ログイン済み/);
   assert.equal((await f.call('/auth/logout',{method:'POST',headers:{Cookie:sid,Origin:'https://elsewhere.example'}})).status,403);
+  assert.equal((await f.call('/auth/logout',{method:'POST',headers:{Cookie:sid,Origin:'null'}})).status,403);
   const logout = await f.call('/auth/logout',{method:'POST',headers:{Cookie:sid,Origin:origin}});
   assert.equal(logout.status,303);
   assert.match(logout.headers.getSetCookie()[0], /Max-Age=0/);

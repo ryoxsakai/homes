@@ -42,10 +42,10 @@ export async function readGoogleIdentity(idToken, clientId, nonce, keys = google
 const html = (title, body) => `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${title} | Homes</title><main><h1>${title}</h1>${body}</main></html>`;
 const shell = '<a href="/">Homesに戻る</a>';
 
-function response(status, body = null, { cookies = [], location, type = 'text/html; charset=utf-8' } = {}) {
+function response(status, body = null, { cookies = [], location, type = 'text/html; charset=utf-8', referrer = 'no-referrer' } = {}) {
   const headers = new Headers({
     'Cache-Control': 'no-store',
-    'Referrer-Policy': 'no-referrer',
+    'Referrer-Policy': referrer,
     'X-Content-Type-Options': 'nosniff',
     'X-Robots-Tag': 'noindex, nofollow',
     'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
@@ -86,8 +86,10 @@ export function createApp({ upstream = fetch, verify = readGoogleIdentity } = {}
         if (raw) sessionKey = await digest(raw);
         if (url.pathname === '/') {
           const session = sessionKey ? await store.readSession(sessionKey) : null;
-          return session && allowed(session.email, session.sub, env)
-            ? response(200, html('Homes', '<p>ログイン済みです。家庭用メニューは準備中です。</p><form method="post" action="/auth/logout"><button>ログアウト</button></form>'))
+          const signedIn = session && allowed(session.email, session.sub, env);
+          if (signedIn && url.search) return redirect('/');
+          return signedIn
+            ? response(200, html('Homes', '<p>ログイン済みです。家庭用メニューは準備中です。</p><form method="post" action="/auth/logout"><button>ログアウト</button></form>'), { referrer: 'same-origin' })
             : response(200, html('Homes', '<p>許可されたGoogleアカウントでログインしてください。</p><a href="/auth/start">Googleでログイン</a>'));
         }
         if (url.pathname === '/auth/logout') {
