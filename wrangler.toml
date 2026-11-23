@@ -11,3 +11,16 @@ class_name = "HomesAuthStore"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["HomesAuthStore"]
+
+[[durable_objects.bindings]]
+name = "HOME_STORE"
+class_name = "HomesDataStore"
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["HomesDataStore"]
+
+[[rules]]
+type = "Text"
+globs = ["**/ui/app.html", "**/ui/app.css", "**/ui/app.mjs"]
+fallthrough = true

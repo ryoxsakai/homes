@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ja" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+<meta name="robots" content="noindex,nofollow">
+<title>Homes</title>
+<link rel="stylesheet" href="/assets/homes-app.css">
+<script type="module" src="/assets/homes-app.mjs"></script>
+</head>
+<body>
+<a class="skip" href="#main">本文へ</a>
+<header>
+  <div class="brand"><button class="icon-btn mobile-toggle" id="menu-button" aria-label="サービスメニュー" aria-controls="side" aria-expanded="false" data-icon="menu"></button><span class="mark" data-icon="home"></span><strong>Homes</strong></div>
+  <div class="actions">
+    <button class="icon-btn" id="settings" aria-label="外観設定" title="外観設定" data-icon="settings"></button>
+    <button class="icon-btn" id="account" aria-label="アカウント" title="アカウント"><span class="avatar" aria-hidden="true">H</span></button>
+    <div class="quick"><button class="primary" id="quick" aria-label="クイック追加" aria-controls="quick-menu" aria-expanded="false"><span data-icon="plus"></span><span class="quick-label">追加</span></button>
+      <div id="quick-menu" class="popup" hidden><button type="button" data-create="todo"><span data-icon="todo"></span>ToDoを追加</button><button type="button" data-create="notes"><span data-icon="notes"></span>メモを追加</button></div>
+    </div>
+  </div>
+</header>
+<aside class="side" id="side"><h2>サービス</h2><nav id="services" aria-label="サービス"></nav></aside>
+<button type="button" class="scrim" id="scrim" aria-label="サービスメニューを閉じる" tabindex="-1" hidden></button>
+<main id="main" tabindex="-1"><div class="workspace">
+  <div class="intro"><div><p id="eyebrow" class="eyebrow">TASKS</p><h1 id="page-title">ToDo</h1></div></div>
+  <div id="tabs" class="tabs" role="tablist" aria-label="ToDoの表示"></div>
+  <form id="note-tools" class="note-tools" role="search" hidden><label class="search-wrap"><span data-icon="search"></span><input type="search" id="note-search" aria-label="メモを検索" placeholder="タイトル・本文を検索" autocomplete="off"></label></form>
+  <div id="page-error" class="error" hidden role="alert"></div>
+  <section id="primary-content" aria-label="一覧" aria-busy="true"><p class="loading" role="status">読み込み中…</p></section>
+  <noscript><p>ToDo・メモを使うにはJavaScriptを有効にしてください。</p></noscript>
+</div></main>
+<nav class="screenbar" id="screenbar" aria-label="ToDoの表示切替" hidden></nav>
+<output class="toast" id="toast" role="status" hidden></output>
+
+<dialog id="editor" aria-labelledby="editor-title"><form id="editor-form"><div class="dlg-head"><h2 id="editor-title"></h2><button class="icon-btn" id="editor-close" type="button" aria-label="閉じる" data-icon="close"></button></div><div class="dlg-main">
+  <label id="title-row"><span>タイトル</span><input id="entry-title" name="title" required maxlength="120" autocomplete="off"></label>
+  <label id="date-row"><span>期限（任意）</span><input id="entry-date" name="dueDate" type="date"></label>
+  <label id="body-row"><span>本文</span><textarea id="entry-body" name="body" rows="6" maxlength="12000"></textarea></label>
+  <div id="editor-error" class="dlg-status" role="alert" hidden></div>
+  <div id="confirm-row" class="confirm-row" hidden><p>削除しますか？ 元に戻せません。</p><button type="button" id="cancel-delete" class="secondary">戻る</button><button type="button" id="confirm-delete" class="secondary confirm-delete">削除する</button></div>
+  <div id="leave-row" class="confirm-row" hidden><p>保存していない変更を破棄しますか？</p><button type="button" id="cancel-leave" class="secondary">編集に戻る</button><button type="button" id="confirm-leave" class="secondary confirm-delete">破棄する</button></div>
+</div><div class="dlg-foot"><button class="danger-btn" type="button" id="ask-delete">削除</button><button type="submit" id="save-entry" class="primary">保存</button></div></form></dialog>
+<dialog id="settings-dialog" aria-labelledby="theme-title"><div class="dlg-head"><h2 id="theme-title">外観設定</h2><button class="icon-btn" type="button" aria-label="閉じる" data-close="settings-dialog" data-icon="close"></button></div><div class="dlg-main"><p>画面の色を切り替えます。</p></div><div class="dlg-foot"><button class="secondary" type="button" id="toggle-theme"></button></div></dialog>
+<dialog id="account-dialog" aria-labelledby="account-title"><div class="dlg-head"><h2 id="account-title">アカウント</h2><button class="icon-btn" type="button" aria-label="閉じる" data-close="account-dialog" data-icon="close"></button></div><div class="dlg-main"><p>Googleでログイン中です。</p></div><form class="dlg-foot" method="post" action="/auth/logout"><button class="secondary" type="submit">ログアウト</button></form></dialog>
+</body></html>
