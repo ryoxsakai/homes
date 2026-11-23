@@ -4,7 +4,8 @@ const contentTypes = new Map([
   ['/assets/homes-app.mjs', ['js', 'text/javascript; charset=utf-8']]
 ]);
 
-const appCsp = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'; form-action 'self'";
+const appleTouchIcon = 'https://ryoxsakai.github.io/homes/Homes.png';
+const appCsp = `default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data: ${appleTouchIcon}; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'; form-action 'self'`;
 
 export const isPortalPath = path => contentTypes.has(path);
 

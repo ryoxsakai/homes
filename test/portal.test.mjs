@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import { isPortalPath, portalResponse } from '../worker/portal.mjs';
 const portal = { html: 'private-html', css: 'private-style', js: 'private-script' };
@@ -28,4 +29,14 @@ test('clean signed-in shell has self-only CSP and same-origin form referrer', ()
   assert.equal(get('/assets/homes-app.mjs', session).options.type, 'text/javascript; charset=utf-8');
   assert.equal(get('/app', session, 'POST').status, 405);
   assert.equal(get('/app?ignored=query', session).options.location, '/app');
+});
+
+
+test('signed-in shell advertises the same public Homes PNG with a narrowly scoped CSP', async () => {
+  const html = await readFile(new URL('../worker/ui/app.html', import.meta.url), 'utf8');
+  const appleIcon = html.match(/<link rel="apple-touch-icon" sizes="600x600" href="([^"]+)">/)?.[1];
+  assert.equal(appleIcon, 'https://ryoxsakai.github.io/homes/Homes.png');
+  const answer = get('/app', { sub: 'synthetic-test' });
+  assert.equal(answer.options.csp.split('; ').find(x => x.startsWith('img-src ')), "img-src 'self' data: " + appleIcon);
+  assert.match(html, /<meta name="apple-mobile-web-app-title" content="Homes">/);
 });
