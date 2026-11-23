@@ -117,7 +117,7 @@ export function createApp({ upstream = fetch, verify = readGoogleIdentity } = {}
         if (url.searchParams.has('error') || !code || code.length > 2048) return fail(400, 'ログインを完了できませんでした', expired);
         try {
           const result = await upstream('https://oauth2.googleapis.com/token', {
-            method: 'POST', redirect: 'error', signal: AbortSignal.timeout(8000),
+            method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(8000),
             body: new URLSearchParams({
               code, client_id: env.GOOGLE_CLIENT_ID, client_secret: env.GOOGLE_CLIENT_SECRET,
               redirect_uri: callback, code_verifier: attempt.verifier, grant_type: 'authorization_code'

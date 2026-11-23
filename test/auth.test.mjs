@@ -7,7 +7,7 @@ const origin = 'https://homes.example.test';
 const cookie = (response, prefix) => response.headers.getSetCookie().map(x => x.split(';')[0]).find(x => x.startsWith(prefix));
 const stateCookie = '__Host-homes-state=';
 const sidCookie = '__Host-homes-session=';
-function fixture({ email = 'owner@gmail.com', sub = 'account1' } = {}) {
+function fixture({ email = 'owner@gmail.com', sub = 'account1', exchangeRedirect = false } = {}) {
   const attempts = new Map(), sessions = new Map();
   const store = {
     putState: async (k,n,v) => attempts.set(k,{nonce:n,verifier:v}),
@@ -22,9 +22,10 @@ function fixture({ email = 'owner@gmail.com', sub = 'account1' } = {}) {
     upstream: async (url, init) => {
       ++exchanges;
       assert.equal(url, 'https://oauth2.googleapis.com/token');
-      assert.equal(init.redirect, 'error');
+      assert.equal(init.redirect, 'manual');
       assert.equal(init.body.get('redirect_uri'), origin + '/auth/callback');
       assert.match(init.body.get('code_verifier'), /^[\w-]{43}$/);
+      if (exchangeRedirect) return Response.redirect('https://elsewhere.example', 302);
       return Response.json({id_token:'test-id'});
     },
     verify: async (id, aud, nonce) => {
@@ -132,4 +133,12 @@ test('OIDC accepts valid signed JWT and rejects wrong signature, issuer, audienc
     await assert.rejects(verify(await make(claims)));
   }
   await assert.rejects(verify(await make({},(await generateKeyPair('RS256')).privateKey)));
+});
+
+test('upstream redirects fail closed and issue no session', async () => {
+  const f = fixture({exchangeRedirect:true});
+  const attempt = await f.start();
+  const result = await f.call(attempt.path, {headers:attempt.headers});
+  assert.equal(result.status, 502);
+  assert.equal(cookie(result,sidCookie), undefined);
 });
