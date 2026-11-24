@@ -4,6 +4,7 @@ import { installHead, isInstallPath, installResponse } from './install.mjs';
 import { isPortalPath, portalResponse } from './portal.mjs';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
+const customOrigin = 'https://homes.lrnr.jp';
 const googleKeys = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));
 const issuers = ['https://accounts.google.com', 'accounts.google.com'];
 const stateTTL = 600;
@@ -71,20 +72,27 @@ export function createApp({ upstream = fetch, verify = readGoogleIdentity, porta
   return {
     async fetch(request, env) {
       const url = new URL(request.url);
-      if (isInstallPath(url.pathname)) return installResponse(request, url, env.HOMES_AUTH_ORIGIN, installIcon, response);
+      const legacyOrigin = env.HOMES_AUTH_ORIGIN;
+      const approvedOrigin = url.protocol === 'https:' && (url.origin === legacyOrigin || url.origin === customOrigin);
+      if (isInstallPath(url.pathname)) return approvedOrigin
+        ? installResponse(request, url, installIcon, response)
+        : response(404);
       const dataPath = url.pathname.startsWith('/api/');
       const portalPath = isPortalPath(url.pathname);
       const dataResponse = (status, error) => response(status, JSON.stringify({error}), {type:'application/json; charset=utf-8'});
       if (!paths.has(url.pathname) && !dataPath && !portalPath) return fail(404, 'ページがありません');
       const members = readMembers(env);
       if (!configured(env, members)) return dataPath ? dataResponse(503, 'unavailable') : fail(503, 'Homesのログインは準備中です');
-      if (url.origin !== env.HOMES_AUTH_ORIGIN) return dataPath ? dataResponse(404, 'not_found') : fail(404, 'ページがありません');
+      if (!approvedOrigin) return dataPath ? dataResponse(404, 'not_found') : fail(404, 'ページがありません');
+      // Existing Worker-host cookies and pending attempts keep their original storage keys.
+      // On the custom host even a copied token cannot be replayed against the other host.
+      const authKey = value => digest(url.origin === customOrigin ? customOrigin + '|' + value : value);
       if (dataPath) {
         try {
           const raw = readCookie(request, sessionCookie);
           if (!raw) return dataResponse(401, 'unauthorized');
           const auth = env.AUTH_STORE.get(env.AUTH_STORE.idFromName('homes-auth-v1'));
-          const session = await auth.readSession(await digest(raw));
+          const session = await auth.readSession(await authKey(raw));
           const member = authorizedMember(session, members);
           return await handleHomesData(request, env, member, response);
         } catch { return dataResponse(503, 'unavailable'); }
@@ -93,7 +101,7 @@ export function createApp({ upstream = fetch, verify = readGoogleIdentity, porta
         try {
           const raw = readCookie(request, sessionCookie);
           const store = raw && env.AUTH_STORE.get(env.AUTH_STORE.idFromName('homes-auth-v1'));
-          const session = raw ? await store.readSession(await digest(raw)) : null;
+          const session = raw ? await store.readSession(await authKey(raw)) : null;
           return portalResponse(request, url, authorizedMember(session, members), portal, response);
         } catch { return fail(503, '一時的に利用できません'); }
       }
@@ -102,9 +110,9 @@ export function createApp({ upstream = fetch, verify = readGoogleIdentity, porta
       const store = env.AUTH_STORE.get(env.AUTH_STORE.idFromName('homes-auth-v1'));
       let sessionKey;
       const raw = readCookie(request, sessionCookie);
-      const callback = env.HOMES_AUTH_ORIGIN + '/auth/callback';
+      const callback = url.origin + '/auth/callback';
       try {
-        if (raw) sessionKey = await digest(raw);
+        if (raw) sessionKey = await authKey(raw);
         if (url.pathname === '/') {
           const session = sessionKey ? await store.readSession(sessionKey) : null;
           const signedIn = authorizedMember(session, members);
@@ -120,12 +128,12 @@ export function createApp({ upstream = fetch, verify = readGoogleIdentity, porta
           if (request.headers.get('Origin') !== url.origin) return fail(403, 'この操作は許可されていません');
           if (sessionKey) await store.removeSession(sessionKey);
           const existing = readCookie(request, stateCookie);
-          if (existing) await store.takeState(await digest(existing));
+          if (existing) await store.takeState(await authKey(existing));
           return redirect('/', [cookie(sessionCookie, '', 0), cookie(stateCookie, '', 0)]);
         }
         if (url.pathname === '/auth/start') {
           const stateToken = token(), nonce = token(), verifier = token();
-          await store.putState(await digest(stateToken), nonce, verifier);
+          await store.putState(await authKey(stateToken), nonce, verifier);
           const authorize = new URL('https://accounts.google.com/o/oauth2/v2/auth');
           authorize.search = new URLSearchParams({
             client_id: env.GOOGLE_CLIENT_ID, redirect_uri: callback, response_type: 'code',
@@ -137,7 +145,7 @@ export function createApp({ upstream = fetch, verify = readGoogleIdentity, porta
         const expired = [cookie(stateCookie, '', 0)];
         const state = one(url.searchParams, 'state');
         if (!state || state !== readCookie(request, stateCookie)) return fail(400, 'ログインの確認に失敗しました');
-        const attempt = await store.takeState(await digest(state));
+        const attempt = await store.takeState(await authKey(state));
         if (!attempt) return fail(400, 'ログインの有効期限が切れました', expired);
         const code = one(url.searchParams, 'code');
         if (url.searchParams.has('error') || !code || code.length > 2048) return fail(400, 'ログインを完了できませんでした', expired);
@@ -154,7 +162,7 @@ export function createApp({ upstream = fetch, verify = readGoogleIdentity, porta
           const identity = await verify(id_token, env.GOOGLE_CLIENT_ID, attempt.nonce);
           if (!authorizedMember(identity, members)) return fail(403, 'このアカウントにはアクセス権がありません', expired);
           const newSession = token();
-          await store.replaceSession(await digest(newSession), identity.email, identity.sub, sessionKey);
+          await store.replaceSession(await authKey(newSession), identity.email, identity.sub, sessionKey);
           return redirect('/', [...expired, cookie(sessionCookie, newSession, sessionTTL)]);
         } catch { return fail(502, 'Googleログインを完了できませんでした', expired); }
       } catch { return fail(503, '一時的に利用できません'); }

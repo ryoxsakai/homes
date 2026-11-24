@@ -67,3 +67,12 @@ GitHub Pages は案内ページです。アプリとして使うときは、Safa
 案内ページを追加済みの場合も、実際のログイン先から新しく追加してください。
 ログイン画面とアプリ本体は同一オリジンです。認証時に Google の画面へ移動する
 ことがあります。ToDo・メモのオフライン保存は行いません。
+
+### カスタムドメイン
+
+`https://homes.lrnr.jp` と、従来の `HOMES_AUTH_ORIGIN` は、同じ Worker と
+家庭データを使います。従来の環境変数は変えず、Google OAuth の「承認済みの
+リダイレクト URI」に `https://homes.lrnr.jp/auth/callback` を追加してください。
+従来の URI も残します。認証 Cookie はホストごとに独立するため、新しい URL では
+Google ログインが必要です。iPhone のホーム画面も、新しい URL の Safari 画面から
+追加し直してください。

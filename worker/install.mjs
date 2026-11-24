@@ -14,8 +14,7 @@ export const installHead = `<meta name="apple-mobile-web-app-capable" content="y
 <link rel="apple-touch-icon" sizes="600x600" href="${iconPath}">`;
 export const isInstallPath = path => path === manifestPath || path === iconPath;
 
-export function installResponse(request, url, origin, icon, respond) {
-  if (!origin || url.origin !== origin) return respond(404);
+export function installResponse(request, url, icon, respond) {
   if (request.method !== 'GET') return respond(405);
   if (url.pathname === manifestPath) {
     return respond(200, manifest, {type: 'application/manifest+json; charset=utf-8'});
