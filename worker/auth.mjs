@@ -1,3 +1,6 @@
+import { authorizedMember, readMembers } from './members.mjs';
+import { handleHomesData } from './data.mjs';
+import { isPortalPath, portalResponse } from './portal.mjs';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 const googleKeys = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));
@@ -21,13 +24,6 @@ function readCookie(request, name) {
   return values.length === 1 && secureToken.test(values[0]) ? values[0] : null;
 }
 
-function allowed(email, sub, env) {
-  if (typeof email !== 'string' || typeof sub !== 'string' || !/^[\x21-\x7e]{1,255}$/.test(sub)) return false;
-  const owner = env.HOMES_OWNER_EMAIL?.trim().toLowerCase();
-  // For an external email address Google may not be authoritative. Pin its stable sub.
-  return owner === email.toLowerCase() && (env.HOMES_OWNER_SUB ? env.HOMES_OWNER_SUB === sub : owner.endsWith('@gmail.com'));
-}
-
 export async function readGoogleIdentity(idToken, clientId, nonce, keys = googleKeys) {
   if (typeof idToken !== 'string' || idToken.length > 8192) throw Error('bad identity');
   const { payload } = await jwtVerify(idToken, keys, {
@@ -42,13 +38,14 @@ export async function readGoogleIdentity(idToken, clientId, nonce, keys = google
 const html = (title, body) => `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${title} | Homes</title><main><h1>${title}</h1>${body}</main></html>`;
 const shell = '<a href="/">Homesに戻る</a>';
 
-function response(status, body = null, { cookies = [], location, type = 'text/html; charset=utf-8', referrer = 'no-referrer' } = {}) {
+function response(status, body = null, { cookies = [], location, type = 'text/html; charset=utf-8', referrer = 'no-referrer', csp = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'" } = {}) {
   const headers = new Headers({
     'Cache-Control': 'no-store',
     'Referrer-Policy': referrer,
     'X-Content-Type-Options': 'nosniff',
+    'Cross-Origin-Resource-Policy': 'same-origin',
     'X-Robots-Tag': 'noindex, nofollow',
-    'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+    'Content-Security-Policy': csp,
     'Content-Type': type
   });
   if (location) headers.set('Location', location);
@@ -60,22 +57,44 @@ const redirect = (location, cookies = []) => response(303, null, { location, coo
 const fail = (status, message, cookies = []) => response(status, html(message, shell), { cookies });
 const one = (q, k) => q.getAll(k).length === 1 ? q.get(k) : null;
 
-function configured(env) {
+function configured(env, members) {
   try {
     const origin = new URL(env.HOMES_AUTH_ORIGIN);
     return origin.origin === env.HOMES_AUTH_ORIGIN && origin.protocol === 'https:'
       && !!env.GOOGLE_CLIENT_ID && !!env.GOOGLE_CLIENT_SECRET
-      && !!env.HOMES_OWNER_EMAIL?.trim() && !!env.AUTH_STORE;
+      && !!members && !!env.AUTH_STORE;
   } catch { return false; }
 }
 
-export function createApp({ upstream = fetch, verify = readGoogleIdentity } = {}) {
+export function createApp({ upstream = fetch, verify = readGoogleIdentity, portal } = {}) {
   return {
     async fetch(request, env) {
       const url = new URL(request.url);
-      if (!paths.has(url.pathname)) return fail(404, 'ページがありません');
-      if (!configured(env)) return fail(503, 'Homesのログインは準備中です');
-      if (url.origin !== env.HOMES_AUTH_ORIGIN) return fail(404, 'ページがありません');
+      const dataPath = url.pathname.startsWith('/api/');
+      const portalPath = isPortalPath(url.pathname);
+      const dataResponse = (status, error) => response(status, JSON.stringify({error}), {type:'application/json; charset=utf-8'});
+      if (!paths.has(url.pathname) && !dataPath && !portalPath) return fail(404, 'ページがありません');
+      const members = readMembers(env);
+      if (!configured(env, members)) return dataPath ? dataResponse(503, 'unavailable') : fail(503, 'Homesのログインは準備中です');
+      if (url.origin !== env.HOMES_AUTH_ORIGIN) return dataPath ? dataResponse(404, 'not_found') : fail(404, 'ページがありません');
+      if (dataPath) {
+        try {
+          const raw = readCookie(request, sessionCookie);
+          if (!raw) return dataResponse(401, 'unauthorized');
+          const auth = env.AUTH_STORE.get(env.AUTH_STORE.idFromName('homes-auth-v1'));
+          const session = await auth.readSession(await digest(raw));
+          const member = authorizedMember(session, members);
+          return await handleHomesData(request, env, member, response);
+        } catch { return dataResponse(503, 'unavailable'); }
+      }
+      if (portalPath) {
+        try {
+          const raw = readCookie(request, sessionCookie);
+          const store = raw && env.AUTH_STORE.get(env.AUTH_STORE.idFromName('homes-auth-v1'));
+          const session = raw ? await store.readSession(await digest(raw)) : null;
+          return portalResponse(request, url, authorizedMember(session, members), portal, response);
+        } catch { return fail(503, '一時的に利用できません'); }
+      }
       const method = url.pathname === '/auth/logout' ? 'POST' : 'GET';
       if (request.method !== method) return fail(405, 'この操作は利用できません');
       const store = env.AUTH_STORE.get(env.AUTH_STORE.idFromName('homes-auth-v1'));
@@ -86,7 +105,8 @@ export function createApp({ upstream = fetch, verify = readGoogleIdentity } = {}
         if (raw) sessionKey = await digest(raw);
         if (url.pathname === '/') {
           const session = sessionKey ? await store.readSession(sessionKey) : null;
-          const signedIn = session && allowed(session.email, session.sub, env);
+          const signedIn = authorizedMember(session, members);
+          if (signedIn && portal) return redirect('/app');
           if (signedIn && url.search) return redirect('/');
           return signedIn
             ? response(200, html('Homes', '<p>ログイン済みです。家庭用メニューは準備中です。</p><form method="post" action="/auth/logout"><button>ログアウト</button></form>'), { referrer: 'same-origin' })
@@ -128,7 +148,7 @@ export function createApp({ upstream = fetch, verify = readGoogleIdentity } = {}
           if (!result.ok) throw Error('token exchange failed');
           const { id_token } = await result.json();
           const identity = await verify(id_token, env.GOOGLE_CLIENT_ID, attempt.nonce);
-          if (!allowed(identity.email, identity.sub, env)) return fail(403, 'このアカウントにはアクセス権がありません', expired);
+          if (!authorizedMember(identity, members)) return fail(403, 'このアカウントにはアクセス権がありません', expired);
           const newSession = token();
           await store.replaceSession(await digest(newSession), identity.email, identity.sub, sessionKey);
           return redirect('/', [...expired, cookie(sessionCookie, newSession, sessionTTL)]);
