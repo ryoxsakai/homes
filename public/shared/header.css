@@ -1,0 +1,433 @@
+/*
+ * Works app shell: fixed header, app sidebar (PC) / drawer (mobile) and quick add.
+ * Loaded on every Works page; shared/header.js builds the navigation and quick add.
+ */
+
+/* ---------- Header ---------- */
+.page-header.works-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: var(--works-header-h, 60px);
+  box-sizing: border-box;
+  max-width: none;
+  margin: 0;
+  padding: 8px var(--works-gutter, 24px);
+  border: 0;
+  border-bottom: 1px solid var(--works-line, #e4e7f0);
+  border-radius: 0;
+  box-shadow: none;
+  background: rgb(255 255 255 / .96);
+  color: var(--works-ink, #1b1f33);
+  font-family: var(--works-font, system-ui, sans-serif);
+}
+.works-header h1 {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  flex: 1 1 auto;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: .01em;
+}
+.works-header .works-home {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 10px;
+  color: var(--works-ink, #1b1f33);
+  text-decoration: none;
+}
+.works-header .page-header-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--works-accent, #984324);
+  box-shadow: none;
+  color: #fff;
+  font: 800 1rem/1 var(--works-font, system-ui, sans-serif);
+  letter-spacing: -.02em;
+}
+.works-header .works-home > span:last-child { font-size: 1.05rem; font-weight: 800; letter-spacing: .02em; }
+.works-page-title {
+  min-width: 0;
+  overflow: hidden;
+  padding-left: 12px;
+  border-left: 1px solid var(--works-line, #e4e7f0);
+  color: var(--works-ink-2, #4a5068);
+  font-size: .95rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.works-header-actions { display: flex; flex: 0 0 auto; align-items: center; flex-wrap: nowrap; gap: 6px; }
+.works-header .user-bar { display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; }
+.works-header [hidden] { display: none !important; }
+
+/* Every header control is a quiet 40px icon button with a 44px hit area. */
+.works-header-actions button,
+.works-header-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--works-ink-2, #4a5068) !important;
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: background-color .15s ease, color .15s ease;
+}
+.works-header-actions button:hover,
+.works-header-actions .btn:hover { background: var(--works-hover, #eff1f8) !important; color: var(--works-ink, #1b1f33) !important; }
+.works-header-actions button svg,
+.works-header-actions .btn svg,
+.works-header-actions .works-icon { width: 22px; height: 22px; }
+.works-header .user-icon-btn img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+.works-header :is(a, button, select, summary):focus-visible { outline: 2px solid var(--works-accent, #984324); outline-offset: 2px; }
+
+/* ---------- Quick add ---------- */
+.works-quick { position: relative; flex-shrink: 0; }
+.works-header-actions .works-quick-add {
+  gap: 6px;
+  min-width: 44px;
+  padding: 0 14px 0 12px;
+  border-radius: 999px !important;
+  background: var(--works-gradient, #984324) !important;
+  box-shadow: 0 2px 10px rgb(155 66 29 / .32) !important;
+  color: #fff !important;
+  font-size: .9rem;
+  font-weight: 700;
+}
+/* Keep the gradient and white label in every state; the generic header hover
+ * (grey face, ink text) must not reach the one primary button. */
+html body .works-header .works-header-actions .works-quick-add:is(:hover, :focus-visible, :active, [aria-expanded="true"]) {
+  background: var(--works-gradient, #984324) !important;
+  color: #fff !important;
+}
+html body .works-header .works-header-actions .works-quick-add:hover { filter: brightness(1.08); box-shadow: 0 4px 14px rgb(155 66 29 / .4) !important; }
+html body .works-header .works-header-actions .works-quick-add:active { filter: brightness(.96); }
+.works-header-actions .works-quick-add svg { width: 18px; height: 18px; }
+.works-quick-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  display: grid;
+  gap: 2px;
+  width: 15rem;
+  padding: 6px;
+  border: 1px solid var(--works-line, #e4e7f0);
+  border-radius: var(--works-radius, 12px);
+  background: #fff;
+  box-shadow: var(--works-shadow-lg);
+}
+.works-quick-menu a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  color: var(--works-ink, #1b1f33);
+  font-size: .92rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+.works-quick-menu a:hover,
+.works-quick-menu a:focus-visible { background: var(--works-hover, #eff1f8); }
+.works-quick-menu a small { display: block; color: var(--works-ink-3, #636a84); font-size: .75rem; font-weight: 400; }
+.works-quick-menu .works-app-icon { width: 36px; height: 36px; border-radius: 10px; }
+
+/* ---------- App navigation: drawer on mobile, sidebar on PC ---------- */
+.works-header .works-navigation { position: static; flex-shrink: 0; order: -1; margin: 0; padding: 0; border: 0; background: transparent; box-shadow: none; }
+.works-navigation summary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  color: var(--works-ink-2, #4a5068);
+  list-style: none;
+  cursor: pointer;
+}
+.works-navigation summary::-webkit-details-marker { display: none; }
+.works-navigation summary:hover { background: var(--works-hover, #eff1f8); }
+.works-navigation summary svg { width: 22px; height: 22px; }
+.works-navigation nav {
+  position: fixed;
+  top: var(--works-header-height, 60px);
+  bottom: 0;
+  left: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-sizing: border-box;
+  width: min(300px, 86vw);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 12px 24px;
+  border-right: 0;
+  background: var(--works-sidebar, #eceef1);
+  box-shadow: var(--works-shadow-lg);
+  font-family: var(--works-font, system-ui, sans-serif);
+}
+.works-navigation[open]::before {
+  content: "";
+  position: fixed;
+  inset: var(--works-header-height, 60px) 0 0 0;
+  z-index: 45;
+  background: rgb(20 24 45 / .32);
+}
+.works-navigation nav a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: var(--works-ink-2, #4a5068);
+  font-size: .92rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background-color .15s ease, color .15s ease;
+}
+.works-navigation nav a:hover { background: rgb(255 255 255 / .6); color: var(--works-ink, #1b1f33); }
+.works-navigation nav a[aria-current] { background: var(--works-surface, #fff); box-shadow: var(--works-shadow-sm); color: var(--works-ink, #1c1d21); font-weight: 700; }
+.works-app-icon {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  background: var(--app-tint, #f6e7dc);
+  color: var(--app-ink, #984324);
+}
+.works-app-icon svg { width: 18px; height: 18px; }
+
+/* Frost the page once, behind both the links and the outside-tap area. */
+@media screen and (max-width: 1023px) {
+  html:has(.works-navigation[open]) { overflow: hidden; }
+  .page-header.works-header:has(.works-navigation[open]) { z-index: 100; }
+  .works-navigation nav {
+    width: min(360px, 88vw);
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+    background: linear-gradient(90deg, rgb(8 10 15 / .18), transparent);
+    box-shadow: none;
+  }
+  .works-navigation::before {
+    content: "";
+    position: fixed;
+    inset: var(--works-header-height, 60px) 0 0;
+    z-index: 45;
+    background: linear-gradient(to top right, rgb(47 49 54 / .73), rgb(4 5 9 / .87));
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .works-navigation[open]::before {
+    opacity: 1;
+    pointer-events: auto;
+    background: linear-gradient(to top right, rgb(47 49 54 / .73), rgb(4 5 9 / .87));
+  }
+  .works-navigation .works-app-icon { box-shadow: 0 2px 9px rgb(0 0 0 / .64); }
+  .works-navigation nav a { color: #fff; }
+  .works-navigation nav a:hover, .works-navigation nav a[aria-current] {
+    color: #fff;
+    background: rgb(0 0 0 / .27);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / .25);
+  }
+  .works-navigation nav a:focus-visible { outline: 2px solid white; outline-offset: -2px; }
+  @media (prefers-reduced-transparency: reduce) {
+    .works-navigation::before {
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+    .works-navigation nav { background: #202228; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .works-navigation::before { transition: opacity 200ms ease-out; }
+    .works-navigation::details-content { transition: content-visibility 200ms allow-discrete; }
+    .works-navigation nav {
+      opacity: 0;
+      transform: translateX(-100%);
+      transition: opacity 190ms ease-out, transform 190ms ease-out;
+    }
+    .works-navigation[open] nav { opacity: 1; transform: translateX(0); }
+    @starting-style {
+      .works-navigation[open] nav { opacity: 0; transform: translateX(-100%); }
+    }
+  }
+}
+
+@media (min-width: 1024px) {
+  body.works-shell { padding-left: var(--works-sidebar-w, 240px); }
+  body.works-shell .page-header.works-header {
+    width: calc(100% + var(--works-sidebar-w, 240px));
+    margin-left: calc(-1 * var(--works-sidebar-w, 240px));
+  }
+  .works-header h1 { gap: 0; }
+  .works-header .works-home { width: calc(var(--works-sidebar-w, 240px) - var(--works-gutter, 24px)); }
+  .works-page-title { padding-left: var(--works-gutter, 24px); border-left: 0; color: var(--works-ink, #1b1f33); font-size: 1.05rem; font-weight: 700; }
+  .works-navigation summary { display: none; }
+  .works-navigation[open]::before { display: none; }
+  /* The sidebar stays visible whether or not the disclosure is open. */
+  .works-navigation::details-content { content-visibility: visible; display: contents; }
+  .works-navigation nav {
+    top: var(--works-header-height, 60px);
+    z-index: 20;
+    width: var(--works-sidebar-w, 240px);
+    padding: 12px 12px 24px;
+    border-right: 0;
+    background: var(--works-sidebar, #eceef1);
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .page-header.works-header { gap: 2px; padding: 8px 8px 8px 4px; }
+  .works-header h1 { gap: 8px; font-size: .95rem; }
+  .works-page-title { padding-left: 8px; font-size: .95rem; color: var(--works-ink, #1b1f33); font-weight: 700; border-left: 0; }
+  .works-header .works-home > span:last-child { display: none; }
+  .works-header:has(.works-page-title) .works-home { display: none; }
+  .works-header-actions { gap: 2px; }
+  .works-header-actions .works-quick-add { width: 44px; padding: 0; }
+  .works-quick-add-label { display: none; }
+}
+
+@media print {
+  .page-header.works-header,
+  .works-navigation nav { display: none !important; }
+  body.works-shell { padding-left: 0 !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .works-header *, .works-navigation * { transition: none !important; }
+}
+
+/* Sticky in-page bars sit below the header. */
+.material-page-tabs,
+.admission-view-tabs { top: var(--works-header-height, 60px); }
+.print-library { top: calc(var(--works-header-height, 60px) + 1rem); max-height: calc(100vh - var(--works-header-height, 60px) - 2rem); }
+
+.works-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Account button: photo replaces the outline icon once it has loaded. */
+.works-header .works-account .works-avatar-photo { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+.works-header .works-account.has-photo > :not(.works-avatar-photo) { display: none; }
+/* Workflow's text "ログイン/ログアウト" button reads as the same icon button. */
+.works-header #auth.works-account { width: 44px; font-size: 0 !important; }
+.works-header #auth.works-account:not(.has-photo)::before {
+  content: "";
+  width: 24px;
+  height: 24px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Ccircle cx='12' cy='9' r='3'/%3E%3Cpath d='M5.5 18c1-3 3-4.5 6.5-4.5s5.5 1.5 6.5 4.5'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Ccircle cx='12' cy='9' r='3'/%3E%3Cpath d='M5.5 18c1-3 3-4.5 6.5-4.5s5.5 1.5 6.5 4.5'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.works-header #auth.works-account.has-photo::before {
+  content: "";
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--works-avatar) center / cover no-repeat;
+}
+/* One account photo size on every service (pages had their own sizes). */
+html body .works-header :is(#user-avatar, .works-avatar-photo) {
+  flex-shrink: 0;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  object-fit: cover;
+}
+html body .works-header #auth.works-account.has-photo::before { flex: 0 0 32px; min-width: 32px; }
+
+/* The common destinations occupy the lowest row. */
+/* Match the service switcher across navigation, headers and action icons. */
+.works-shell { --works-icon-stroke: 1.8; --works-icon-fill-edge: .2; }
+.works-shell :is([aria-current="page"], [aria-selected="true"], [aria-pressed="true"]) {
+  --works-icon-stroke: 2.4;
+  --works-icon-fill-edge: .6;
+}
+.works-shell svg[stroke="currentColor"],
+.works-shell svg [stroke="currentColor"] { stroke-width: var(--works-icon-stroke); stroke-linecap: round; stroke-linejoin: round; }
+/* The 16-unit Bootstrap paths already contain a nominal one-unit outline. */
+.works-shell svg.works-icon[viewBox="0 0 16 16"][fill="currentColor"] {
+  stroke: currentColor; stroke-width: var(--works-icon-fill-edge); stroke-linejoin: round;
+}
+.works-service-bar { display: none; }
+@media screen and (max-width: 730px) {
+  body.works-shell::after { content: ""; display: block; height: calc(68px + env(safe-area-inset-bottom)); }
+  body.works-shell .todo-page .row-menu[open] > div,
+  body.works-shell .todo-page #notice:not(:empty),
+  body.works-shell.tutor-bootstrap .record-save-toasts {
+    bottom: calc(148px + env(safe-area-inset-bottom));
+  }
+  nav.works-service-bar {
+    position: fixed;
+    z-index: 36;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    width: min(calc(100% - 32px), 352px);
+    box-sizing: border-box;
+    padding: 3px 5px;
+    border-radius: 16px;
+    background: rgb(255 255 255 / .97);
+    box-shadow: var(--works-shadow-lg, 0 3px 16px #181a2326);
+  }
+  .works-service-bar a {
+    display: grid;
+    place-items: center;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 44px;
+    color: #737985;
+    border-radius: 12px;
+    text-decoration: none;
+  }
+  .works-service-bar .works-app-icon { opacity: .78; }
+  .works-service-bar a[aria-current] .works-app-icon { opacity: 1; box-shadow: inset 0 0 0 1.5px currentColor; }
+  body.works-shell :is(.todo-page .bottom-tabs, .memo-page .memo-menu, .memo-menu) { bottom: calc(72px + env(safe-area-inset-bottom)); }
+  .works-service-bar a[aria-current] svg { stroke-width: 2.4; }
+  .works-service-bar a:focus-visible { outline: 2px solid var(--works-accent); outline-offset: -2px; }
+  body:has(.works-navigation[open], dialog[open]) .works-service-bar { display: none; }
+}
+
+@media screen and (max-width: 640px) {
+  body.works-shell:is(.tutor-bootstrap,.admission-bootstrap,.material-bootstrap) :is(.page-tabs,.admission-view-tabs) {
+    bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-page-tab-panel]:not([hidden]), [data-material-tab-panel]:not([hidden]), [data-admission-view]:not([hidden]) {
+    animation: works-view-appear .18s ease-out;
+  }
+  @keyframes works-view-appear { from { opacity: .35; } to { opacity: 1; } }
+}
+html.works-service-host, .works-service-host body { height: 100%; overflow: hidden; margin: 0; padding: 0; }
+.works-service-frame { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; background: #f4f5f7; }
+.works-service-frame[aria-hidden="true"] { opacity: 0; pointer-events: none; }

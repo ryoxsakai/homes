@@ -10,7 +10,7 @@ const bytes = async (file) => readFile(new URL('../worker/ui/' + file, import.me
 
 test('installing from the login page and the signed-in app uses one standalone app on the auth origin', async () => {
   const icon = await bytes('Homes.png');
-  const app = createApp({installIcon: icon, portal:{html:(await bytes('app.html')).toString()}});
+  const app = createApp({installIcon: icon, assets:{fetch: async () => new Response('private', {headers:{'Content-Type':'text/html'}})}});
   const get = (path, headers) => app.fetch(new Request(origin + path, {headers}), env);
   const headers = {cookie:'__Host-homes-session=' + 'a'.repeat(43)};
   const anonymous = await get('/');
@@ -52,7 +52,8 @@ test('public install assets do not access either database or open any private ro
   }
   assert.equal((await get('/api/me')).status, 401);
   assert.equal((await get('/app')).headers.get('location'), '/');
-  assert.equal((await get('/assets/homes-app.mjs')).status, 404);
+  assert.equal((await get('/shared/header.js')).status, 404);
+  assert.equal((await get('/todo/')).headers.get('location'), '/');
   assert.equal((await get('/worker/ui/Homes.png')).status, 404);
   assert.equal((await get('/service-worker.js')).status, 404);
 });
