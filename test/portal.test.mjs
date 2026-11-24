@@ -35,8 +35,8 @@ test('clean signed-in shell has self-only CSP and same-origin form referrer', ()
 test('signed-in shell advertises the same public Homes PNG with a narrowly scoped CSP', async () => {
   const html = await readFile(new URL('../worker/ui/app.html', import.meta.url), 'utf8');
   const appleIcon = html.match(/<link rel="apple-touch-icon" sizes="600x600" href="([^"]+)">/)?.[1];
-  assert.equal(appleIcon, 'https://ryoxsakai.github.io/homes/Homes.png');
+  assert.equal(appleIcon, '/homes-icon.png');
   const answer = get('/app', { sub: 'synthetic-test' });
-  assert.equal(answer.options.csp.split('; ').find(x => x.startsWith('img-src ')), "img-src 'self' data: " + appleIcon);
+  assert.equal(answer.options.csp.split('; ').find(x => x.startsWith('img-src ')), "img-src 'self' data:");
   assert.match(html, /<meta name="apple-mobile-web-app-title" content="Homes">/);
 });

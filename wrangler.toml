@@ -25,3 +25,8 @@ new_sqlite_classes = ["HomesDataStore"]
 type = "Text"
 globs = ["**/ui/app.html", "**/ui/app.css", "**/ui/app.mjs"]
 fallthrough = true
+
+[[rules]]
+type = "Data"
+globs = ["**/ui/Homes.png"]
+fallthrough = true

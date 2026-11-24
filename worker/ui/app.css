@@ -26,3 +26,13 @@ dialog{width:min(calc(100vw - 32px),430px);border:0;border-radius:12px;padding:0
 .task-attribution{display:grid;gap:4px;padding:10px 12px;margin:0;border-radius:8px;background:var(--track);color:var(--muted);font-size:.86rem}
 .task-attribution div{display:grid;grid-template-columns:4.8em minmax(0,1fr);gap:8px}
 .task-attribution dt{font-weight:700}.task-attribution dd{margin:0;overflow-wrap:anywhere}
+
+/* Full-bleed background, with controls and fixed panels inside the device edges. */
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left)}
+header{top:env(safe-area-inset-top)}
+.side{top:calc(60px + env(safe-area-inset-top));left:env(safe-area-inset-left);padding-bottom:calc(22px + env(safe-area-inset-bottom))}
+@media(max-width:1023px){.scrim.visible{top:calc(60px + env(safe-area-inset-top))}}
+@media(min-width:641px){main{padding-bottom:calc(36px + env(safe-area-inset-bottom))}}
+.toast{right:calc(var(--gutter) + env(safe-area-inset-right))}
+.skip{top:calc(5px + env(safe-area-inset-top));left:calc(5px + env(safe-area-inset-left))}
+@media(min-width:641px){.toast{bottom:calc(16px + env(safe-area-inset-bottom))}}

@@ -1,3 +1,4 @@
+import installIcon from './ui/Homes.png';
 export { HomesDataStore } from './data-store.mjs';
 import { portal } from './portal-assets.mjs';
 import { DurableObject } from 'cloudflare:workers';
@@ -39,4 +40,4 @@ export class HomesAuthStore extends DurableObject {
   }
 }
 
-export default createApp({ portal });
+export default createApp({ portal, installIcon });

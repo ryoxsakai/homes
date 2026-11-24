@@ -1,5 +1,6 @@
 import { authorizedMember, readMembers } from './members.mjs';
 import { handleHomesData } from './data.mjs';
+import { installHead, isInstallPath, installResponse } from './install.mjs';
 import { isPortalPath, portalResponse } from './portal.mjs';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
@@ -35,7 +36,7 @@ export async function readGoogleIdentity(idToken, clientId, nonce, keys = google
   return { email: payload.email.toLowerCase(), sub: payload.sub };
 }
 
-const html = (title, body) => `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${title} | Homes</title><main><h1>${title}</h1>${body}</main></html>`;
+const html = (title, body, head = '') => `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${title} | Homes</title>${head}<main><h1>${title}</h1>${body}</main></html>`;
 const shell = '<a href="/">Homesに戻る</a>';
 
 function response(status, body = null, { cookies = [], location, type = 'text/html; charset=utf-8', referrer = 'no-referrer', csp = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'" } = {}) {
@@ -66,10 +67,11 @@ function configured(env, members) {
   } catch { return false; }
 }
 
-export function createApp({ upstream = fetch, verify = readGoogleIdentity, portal } = {}) {
+export function createApp({ upstream = fetch, verify = readGoogleIdentity, portal, installIcon } = {}) {
   return {
     async fetch(request, env) {
       const url = new URL(request.url);
+      if (isInstallPath(url.pathname)) return installResponse(request, url, env.HOMES_AUTH_ORIGIN, installIcon, response);
       const dataPath = url.pathname.startsWith('/api/');
       const portalPath = isPortalPath(url.pathname);
       const dataResponse = (status, error) => response(status, JSON.stringify({error}), {type:'application/json; charset=utf-8'});
@@ -110,7 +112,9 @@ export function createApp({ upstream = fetch, verify = readGoogleIdentity, porta
           if (signedIn && url.search) return redirect('/');
           return signedIn
             ? response(200, html('Homes', '<p>ログイン済みです。家庭用メニューは準備中です。</p><form method="post" action="/auth/logout"><button>ログアウト</button></form>'), { referrer: 'same-origin' })
-            : response(200, html('Homes', '<p>許可されたGoogleアカウントでログインしてください。</p><a href="/auth/start">Googleでログイン</a>'));
+            : response(200, html('Homes', '<p>許可されたGoogleアカウントでログインしてください。</p><a href="/auth/start">Googleでログイン</a>', installHead), {
+              csp: "default-src 'none'; manifest-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+            });
         }
         if (url.pathname === '/auth/logout') {
           if (request.headers.get('Origin') !== url.origin) return fail(403, 'この操作は許可されていません');
