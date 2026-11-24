@@ -40,9 +40,9 @@ export async function readGoogleIdentity(idToken, clientId, nonce, keys = google
 const html = (title, body, head = '') => `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${title} | Homes</title>${head}<main><h1>${title}</h1>${body}</main></html>`;
 const shell = '<a href="/">Homesに戻る</a>';
 
-function response(status, body = null, { cookies = [], location, type = 'text/html; charset=utf-8', referrer = 'no-referrer', csp = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'" } = {}) {
+function response(status, body = null, { cookies = [], location, type = 'text/html; charset=utf-8', referrer = 'no-referrer', cache = 'no-store', csp = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'" } = {}) {
   const headers = new Headers({
-    'Cache-Control': 'no-store',
+    'Cache-Control': cache,
     'Referrer-Policy': referrer,
     'X-Content-Type-Options': 'nosniff',
     'Cross-Origin-Resource-Policy': 'same-origin',

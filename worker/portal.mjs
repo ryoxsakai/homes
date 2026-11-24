@@ -2,9 +2,9 @@ import { installHead } from './install.mjs';
 
 // Every Works-derived page and asset is private: the Worker serves it from the
 // static-assets binding only to a signed-in family member (run_worker_first).
-const pagePaths = new Set(['/app', '/todo', '/todo/', '/memo', '/memo/']);
-const assetPrefixes = ['/todo/', '/memo/', '/shared/', '/dashboard/vendor/'];
-const canonical = new Map([['/todo', '/todo/'], ['/memo', '/memo/']]);
+const pagePaths = new Set(['/app', '/todo', '/todo/', '/memo', '/memo/', '/books', '/books/']);
+const assetPrefixes = ['/todo/', '/memo/', '/books/', '/shared/', '/dashboard/vendor/'];
+const canonical = new Map([['/todo', '/todo/'], ['/memo', '/memo/'], ['/books', '/books/']]);
 
 export const appCsp = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; manifest-src 'self'; font-src 'self'; frame-src 'self'; frame-ancestors 'self'; base-uri 'none'; object-src 'none'; form-action 'self'";
 
