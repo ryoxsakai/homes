@@ -14,8 +14,8 @@ test('both hosts keep OAuth callbacks, attempts and sessions separate without mi
    async replaceSession(k,email,sub,old){sessions.delete(old);sessions.set(k,{email,sub});}
  };
  const env={HOMES_AUTH_ORIGIN:legacy,GOOGLE_CLIENT_ID:'test',GOOGLE_CLIENT_SECRET:'test',
-   HOMES_OWNER_EMAIL:'test@gmail.com',HOME_STORE:{idFromName(n){assert.equal(n,'homes-data-v1:household');return n},get(){return {list:async()=>({todos:[],notes:[]})}}},AUTH_STORE:{idFromName(n){assert.equal(n,'homes-auth-v1');return n},get(){return store}}};
- const opts={installIcon:new Uint8Array([1]), portal:{html:'app'}, verify:async()=>({email:'test@gmail.com',sub:'test'}),
+   HOMES_OWNER_EMAIL:'test@gmail.com',HOME_STORE:{idFromName(n){assert.equal(n,'homes-data-v1:household');return n},get(){return {read:async kind=>({value:{kind}})}}},AUTH_STORE:{idFromName(n){assert.equal(n,'homes-auth-v1');return n},get(){return store}}};
+ const opts={installIcon:new Uint8Array([1]), assets:{fetch:async()=>new Response('app',{headers:{'Content-Type':'text/html'}})}, verify:async()=>({email:'test@gmail.com',sub:'test'}),
    upstream:async(_,init)=>{exchanges.push(init.body.get('redirect_uri'));return Response.json({id_token:'token'});}};
  const app=createApp(opts);
  const req=(host,path,cookie,method='GET',origin,server=app)=>server.fetch(new Request(host+path,{method,headers:{
@@ -63,14 +63,14 @@ test('both hosts keep OAuth callbacks, attempts and sessions separate without mi
    assert.equal((await req(host,'/homes-icon.png')).status,200);
    assert.equal((await req(host,'/app',own)).status,200);
    assert.equal((await req(host,'/app',other)).headers.get('location'),'/');
-   assert.equal((await req(host,'/api/home',own,'GET',host===legacy?custom:legacy)).status,403);
-   assert.deepEqual(await (await req(host,'/api/home',own)).json(),{todos:[],notes:[]});
+   assert.equal((await req(host,'/api/memo',own,'GET',host===legacy?custom:legacy)).status,403);
+   assert.deepEqual(await (await req(host,'/api/memo',own)).json(),{kind:'memo'});
    assert.equal((await req(host,'/auth/logout',own,'POST',host===legacy?custom:legacy)).status,403);
  }
  assert.equal((await req(custom,'/auth/logout',newCookie,'POST',custom)).status,303);
  assert.equal((await req(legacy,'/app',oldCookie)).status,200);
  for(const host of ['http://homes.lrnr.jp','https://www.homes.lrnr.jp','https://homes.lrnr.jp.evil.test','https://homes.lrnr.jp:444']){
-   for(const path of ['/auth/start','/auth/callback','/homes.webmanifest','/api/home','/app']){
+   for(const path of ['/auth/start','/auth/callback','/homes.webmanifest','/api/todo','/app','/todo/']){
      assert.equal((await req(host,path)).status,404);
    }
  }

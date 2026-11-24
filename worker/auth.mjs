@@ -68,10 +68,11 @@ function configured(env, members) {
   } catch { return false; }
 }
 
-export function createApp({ upstream = fetch, verify = readGoogleIdentity, portal, installIcon } = {}) {
+export function createApp({ upstream = fetch, verify = readGoogleIdentity, assets, installIcon } = {}) {
   return {
     async fetch(request, env) {
       const url = new URL(request.url);
+      const portal = assets ?? env.ASSETS;
       const legacyOrigin = env.HOMES_AUTH_ORIGIN;
       const approvedOrigin = url.protocol === 'https:' && (url.origin === legacyOrigin || url.origin === customOrigin);
       if (isInstallPath(url.pathname)) return approvedOrigin
@@ -102,7 +103,7 @@ export function createApp({ upstream = fetch, verify = readGoogleIdentity, porta
           const raw = readCookie(request, sessionCookie);
           const store = raw && env.AUTH_STORE.get(env.AUTH_STORE.idFromName('homes-auth-v1'));
           const session = raw ? await store.readSession(await authKey(raw)) : null;
-          return portalResponse(request, url, authorizedMember(session, members), portal, response);
+          return await portalResponse(request, url, authorizedMember(session, members), portal, response);
         } catch { return fail(503, '一時的に利用できません'); }
       }
       const method = url.pathname === '/auth/logout' ? 'POST' : 'GET';

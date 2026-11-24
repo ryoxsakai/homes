@@ -1,0 +1,97 @@
+/*
+ * Works design foundation (light only).
+ * Loaded on every page right after shared/header.css so these tokens win over
+ * the older per-page palettes without touching each module's own stylesheet.
+ */
+html:root[data-theme] {
+  --works-font: "M PLUS 2", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
+
+  /* Surfaces */
+  --works-page: #f4f5f7;
+  --works-surface: #ffffff;
+  --works-surface-sunken: #f4f5f7;
+  --works-sidebar: #eceef1;
+  --works-track: #e8eaee;
+  --works-hover: #eceef1;
+  --works-line: #e3e5e9;
+  --works-line-strong: #d3d6dc;
+  --works-input-line: #d5d8de;
+
+  /* Text */
+  --works-ink: #1c1d21;
+  --works-ink-2: #4a4e57;
+  --works-ink-3: #656a74;
+
+  /* Accent: blue to purple, used sparingly */
+  --works-accent: #4d5bd8;
+  --works-accent-strong: #3f4bc4;
+  --works-accent-soft: #eef0ff;
+  --works-accent-line: #c9cffa;
+  --works-gradient: linear-gradient(135deg, #3b82f6 0%, #6d63f0 55%, #8b5cf6 100%);
+  --works-gradient-soft: linear-gradient(135deg, #eef4ff 0%, #f3efff 100%);
+
+  /* Status */
+  --works-danger: #d13f4f;
+  --works-danger-soft: #fdeff1;
+  --works-success: #188a5b;
+  --works-success-soft: #e8f6ef;
+  --works-warning: #b26a00;
+  --works-warning-soft: #fff5e3;
+
+  /* Shape */
+  --works-radius-sm: 6px;
+  --works-radius: 8px;
+  --works-radius-lg: 8px;
+  /* Two shadows: a tight contact edge plus a soft ambient lift (no borders). */
+  --works-shadow-sm: 0 0 0 1px rgb(16 18 24 / .03), 0 1px 2px rgb(16 18 24 / .07);
+  --works-shadow: 0 1px 2px rgb(16 18 24 / .06), 0 4px 12px rgb(16 18 24 / .05);
+  --works-shadow-lg: 0 2px 6px rgb(16 18 24 / .08), 0 12px 32px rgb(16 18 24 / .12);
+  --works-focus: 0 0 0 3px rgb(77 91 216 / .28);
+
+  /* Layout */
+  --works-header-h: 60px;
+  --works-sidebar-w: 240px;
+  --works-gutter: clamp(16px, 2vw, 28px);
+
+  /* Map the legacy tokens every module already reads onto the new palette. */
+  --bg: var(--works-page);
+  --bg-elevated: var(--works-surface);
+  --bg-hover: var(--works-hover);
+  --fg: var(--works-ink);
+  --muted: var(--works-ink-3);
+  --border: var(--works-line);
+  --accent: var(--works-accent);
+  --bg-gradient: var(--works-page);
+  --card-shadow: var(--works-shadow);
+}
+
+/* Light only: also stop components that opt into the OS dark palette. */
+*, *::before, *::after { color-scheme: light !important; }
+
+/* Compact type scale: 14px base (body copy ~13-14px, captions ~12px). */
+html { -webkit-text-size-adjust: 100%; font-size: 14px; }
+/* Phones: keep form fields at 16px so iOS does not zoom while typing. */
+/* Phones and other touch screens: never under 16px in a form field, or iOS zooms
+ * the page on focus. !important so page rules (e.g. 授業記録 at 14px) cannot win. */
+@media (max-width: 640px), (pointer: coarse) {
+  html body :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]), textarea, select) { font-size: max(16px, 1em) !important; }
+}
+/* One typeface across every service, including Bootstrap-scoped modules. */
+html body,
+html body :is(.todo-page, .dashboard-home, [class$="-bootstrap"], [class*="-bootstrap "]) {
+  --body-font-family: var(--works-font);
+  font-family: var(--works-font) !important;
+}
+body {
+  background: var(--works-page);
+  color: var(--works-ink);
+  font-family: var(--works-font);
+  font-feature-settings: "palt" 1;
+  -webkit-font-smoothing: antialiased;
+}
+:where(body) :is(input, textarea, select, button) { font-family: inherit; }
+::selection { background: #dfe3ff; }
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--works-accent);
+  outline-offset: 2px;
+}

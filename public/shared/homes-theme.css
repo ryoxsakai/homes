@@ -1,0 +1,60 @@
+/*
+ * Homes warm palette over the Works design foundation (see DESIGN.md).
+ * Loaded last on every page so it only swaps colours: layout, spacing and
+ * behaviour stay exactly as in Works.
+ */
+html:root[data-theme] {
+  /* Fonts are never fetched from third parties; M PLUS 2 is used when installed. */
+  --works-font: "M PLUS 2", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", system-ui, sans-serif;
+
+  --works-page: #f6f1ea;
+  --works-surface: #fffcf8;
+  --works-surface-sunken: #f6f1ea;
+  --works-sidebar: #eee5da;
+  --works-track: #f0e7dd;
+  --works-hover: #f0e7dd;
+  --works-line: #e8ded2;
+  --works-line-strong: #d9cbbb;
+  --works-input-line: #a5806c;
+
+  --works-ink: #2c211c;
+  --works-ink-2: #684f40;
+  --works-ink-3: #684f40;
+
+  --works-accent: #984324;
+  --works-accent-strong: #7e3519;
+  --works-accent-soft: #f6e7dc;
+  --works-accent-line: #e3c2ae;
+  --works-gradient: linear-gradient(135deg, #9b421d 0%, #963e33 100%);
+  --works-gradient-soft: linear-gradient(135deg, #fbeee4 0%, #f8e9e3 100%);
+
+  /* Status colours keep their meaning and are not absorbed into the brand. */
+  --works-danger: #c0392b;
+  --works-danger-soft: #fdecea;
+  --works-success: #2e7d4f;
+  --works-success-soft: #e8f4ec;
+  --works-warning: #9a5b00;
+  --works-warning-soft: #fdf1dc;
+
+  --works-shadow-sm: 0 0 0 1px rgb(60 36 22 / .04), 0 1px 2px rgb(60 36 22 / .08);
+  --works-shadow: 0 1px 2px rgb(60 36 22 / .07), 0 4px 12px rgb(60 36 22 / .06);
+  --works-shadow-lg: 0 2px 6px rgb(60 36 22 / .09), 0 12px 32px rgb(60 36 22 / .13);
+  --works-focus: 0 0 0 3px rgb(152 67 36 / .28);
+}
+::selection { background: #f3d9c9; }
+
+/* Brand mark: the Homes artwork instead of Works' lettered square. */
+.works-header .page-header-icon.homes-logo {
+  width: 32px; height: 32px; padding: 0; border-radius: 8px;
+  background: transparent !important; object-fit: contain; box-shadow: none;
+}
+
+/* Family member who last touched a ToDo (one per row; details list each role). */
+.todo-page .homes-actor {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 0 8px; border-radius: 999px;
+  background: var(--works-accent-soft); color: var(--works-accent-strong);
+}
+.todo-page .homes-actors { margin: 4px 0 12px; color: var(--works-ink-2); font-size: 12px; }
+.todo-page .homes-actors:empty { display: none; }
+.memo-page .memo-chip:empty { display: none; }

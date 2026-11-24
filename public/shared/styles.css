@@ -1,0 +1,3701 @@
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --bg-elevated: #ffffff;
+  --bg-hover: #ebecee;
+  --fg: #1f2328;
+  --muted: #8a8f98;
+  --border: #e9eaec;
+  --accent: #984324;
+  --bg-gradient: linear-gradient(135deg, #dbeafe 0%, #ede9fe 100%);
+  --card-shadow: 0 1px 3px rgba(30, 41, 59, 0.08), 0 1px 2px rgba(30, 41, 59, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16181c;
+    --bg-elevated: #1e2126;
+    --bg-hover: #262a30;
+    --fg: #e7e9ec;
+    --muted: #9199a3;
+    --border: #2a2d33;
+    --bg-gradient: linear-gradient(135deg, #1e293b 0%, #2e1065 100%);
+    --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.25);
+  }
+}
+
+/* 明示的なテーマ選択(設定モーダル)はOSの設定より優先する */
+:root[data-theme="light"] {
+  --bg: #ffffff;
+  --bg-elevated: #ffffff;
+  --bg-hover: #ebecee;
+  --fg: #1f2328;
+  --muted: #8a8f98;
+  --border: #e9eaec;
+  --bg-gradient: linear-gradient(135deg, #dbeafe 0%, #ede9fe 100%);
+  --card-shadow: 0 1px 3px rgba(30, 41, 59, 0.08), 0 1px 2px rgba(30, 41, 59, 0.05);
+}
+
+:root[data-theme="dark"] {
+  --bg: #16181c;
+  --bg-elevated: #1e2126;
+  --bg-hover: #262a30;
+  --fg: #e7e9ec;
+  --muted: #9199a3;
+  --border: #2a2d33;
+  --bg-gradient: linear-gradient(135deg, #1e293b 0%, #2e1065 100%);
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--accent);
+}
+
+/* IDセレクタでdisplayを指定している要素があっても、hidden属性を確実に優先させる */
+[hidden] {
+  display: none !important;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--bg-gradient);
+  background-attachment: fixed;
+  color: var(--fg);
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 1rem 1.5rem 0;
+  padding: 0.7rem 1rem;
+  background: var(--bg-elevated);
+  border-radius: 1.1rem;
+  box-shadow: var(--card-shadow);
+}
+
+@media (min-width: 900px) {
+  .page-header {
+    margin-left: auto;
+    margin-right: auto;
+    max-width: min(1600px, 95vw);
+  }
+}
+
+.page-header h1 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.page-header a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.page-header-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 0.7rem;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 1rem;
+}
+
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+@media (min-width: 900px) {
+  main {
+    max-width: min(1600px, 95vw);
+  }
+}
+
+.module-grid {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.module-card {
+  display: block;
+  padding: 1.25rem;
+  background: var(--bg-elevated);
+  border-radius: 1rem;
+  box-shadow: var(--card-shadow);
+  text-decoration: none;
+  color: inherit;
+}
+
+.module-card h2 {
+  margin: 0 0 0.25rem;
+}
+
+.module-card p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.panel {
+  margin-bottom: 1.5rem;
+}
+
+.panel h2 {
+  margin-top: 0;
+  font-size: 1rem;
+}
+
+.user-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.user-icon-btn {
+  color: var(--muted);
+  font-size: 1.5rem;
+  padding: 0.1rem;
+  line-height: 1;
+}
+
+.user-icon-btn:hover {
+  background: transparent;
+  color: var(--fg);
+}
+
+.home-auth-error:empty {
+  display: none;
+}
+
+.home-settings-modal {
+  width: min(420px, 92vw);
+}
+
+.home-settings-modal[open] {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.home-settings-modal .modal-header {
+  padding: .8rem 1rem;
+  background: color-mix(in srgb, var(--bg-elevated) 92%, var(--accent) 8%);
+}
+
+#user-avatar {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.inline-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.hint {
+  margin-top: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.calendar-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+}
+
+.calendar-item input {
+  padding: 0;
+}
+
+.calendar-color-dot {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  font-size: 1rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: var(--bg-elevated);
+  color: var(--fg);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--muted);
+  background: var(--bg);
+}
+
+/* デフォルトのボタンは、目立つ塗りボタンではなく薄いグレーの
+   アイコンボタンとして扱う。強調したい操作だけ.btn-primaryを付ける。 */
+button {
+  font: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.7rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+button:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+  background: transparent !important;
+  color: var(--muted) !important;
+}
+
+.btn-primary {
+  background: var(--bg-elevated);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  font-weight: 600;
+}
+
+.btn-primary:hover {
+  background: var(--bg-hover);
+}
+
+/* 「追加」系のボタンは、参考UIの丸い塗りつぶし+ボタンに合わせて
+   濃色の円形ボタンにし、他の目立たないアイコンボタンと差をつける。 */
+.btn-add {
+  background: var(--fg);
+  color: var(--bg);
+  border: none;
+  font-weight: 600;
+}
+
+.btn-add:hover {
+  background: var(--fg);
+  opacity: 0.85;
+}
+
+#event-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.event-item {
+  --item-accent: var(--border);
+  padding: 0.65rem 0.8rem;
+  background: var(--bg-elevated);
+  color: var(--fg);
+  border-radius: 0.9rem;
+  border-left: 4px solid var(--item-accent);
+  box-shadow: var(--card-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.event-date {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.name-token-text {
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
+.name-token-text:hover {
+  color: var(--accent);
+}
+
+.name-token-filter {
+  min-width: 0;
+  min-height: 0;
+  margin-left: 0.2rem;
+  padding: 0 0.2rem;
+  font-size: 0.75em;
+  line-height: 1;
+  background: transparent;
+  color: var(--muted);
+}
+
+.name-token-filter:hover {
+  color: var(--accent);
+}
+
+.event-date-header {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--muted);
+  padding: 0.3rem 0.1rem 0.1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.event-date-header:first-child {
+  padding-top: 0;
+}
+
+.record-student-link {
+  min-width: 0;
+  min-height: 0;
+  justify-content: flex-start;
+  padding: 0.1rem 0.3rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: transparent;
+  color: var(--fg);
+  white-space: nowrap;
+}
+
+.record-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--bg-hover);
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.record-student-link:hover {
+  color: var(--accent);
+}
+
+.record-prev-info {
+  margin-top: 0.3rem;
+  display: grid;
+  gap: 0.15rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.record-prev-info p {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.3rem;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.record-prev-info i {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+.error {
+  color: #dc2626;
+}
+
+.error.info {
+  color: var(--muted);
+}
+
+.page-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  padding: 0.4rem;
+  background: var(--bg-elevated);
+  border-radius: 1.1rem;
+  box-shadow: var(--card-shadow);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.page-tab-btn {
+  flex: 1 0 auto;
+  flex-shrink: 0;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 0.8rem;
+  color: var(--muted);
+  padding: 0.55rem 0.9rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.page-tab-btn:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.page-tab-btn[aria-selected="true"] {
+  color: var(--accent);
+  background: var(--bg-hover);
+  font-weight: 600;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.panel-header h2 {
+  margin: 0;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.view-toggle-btn,
+.record-day-btn {
+  min-height: 2.1rem;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  background: var(--bg-elevated);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.view-toggle-btn[aria-pressed="true"],
+.record-day-btn[aria-pressed="true"] {
+  background: var(--bg-hover);
+  color: var(--fg);
+  border-color: var(--border);
+}
+
+#name-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+}
+
+#name-filter-bar button {
+  min-width: 1.9rem;
+  min-height: 1.9rem;
+  padding: 0.3rem;
+  font-size: 0.75rem;
+}
+
+.calendar-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.calendar-nav button {
+  min-height: 2.1rem;
+  padding: 0.3rem 0.7rem;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  font-size: 0.7rem;
+}
+
+.cal-weekday {
+  text-align: center;
+  font-weight: bold;
+  color: var(--muted);
+  padding: 0.25rem 0;
+}
+
+.cal-cell {
+  min-height: 4.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  padding: 0.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  overflow: hidden;
+}
+
+.cal-cell-empty {
+  border-color: transparent;
+}
+
+.cal-cell-today {
+  border-color: var(--accent);
+}
+
+.cal-day-num {
+  font-weight: bold;
+}
+
+.cal-event {
+  --item-accent: var(--border);
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-size: 0.65rem;
+  padding: 0.1rem 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: var(--bg-elevated);
+  border-left: 3px solid var(--item-accent);
+  border-radius: 0.3rem;
+  color: var(--fg);
+}
+
+.cal-more {
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+
+dialog.app-modal {
+  width: min(480px, 92vw);
+  padding: 0;
+  border: none;
+  border-radius: 1.25rem;
+  background: var(--bg-elevated);
+  color: var(--fg);
+  box-shadow: 0 10px 30px rgba(30, 41, 59, 0.2);
+  overflow: hidden;
+}
+
+dialog.app-modal::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.modal-close {
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.modal-tabs {
+  display: flex;
+  gap: 1rem;
+  padding: 0 1rem;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tab-btn {
+  flex-shrink: 0;
+  min-width: 0;
+  min-height: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  color: var(--muted);
+  padding: 0.6rem 0.1rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.tab-btn:hover {
+  background: transparent;
+  color: var(--fg);
+}
+
+.tab-btn[aria-selected="true"] {
+  color: var(--fg);
+  border-bottom-color: var(--accent);
+}
+
+.modal-tab-panel {
+  padding: 1rem;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.theme-options {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.theme-options label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.theme-options input {
+  padding: 0;
+}
+
+.term-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--bg-elevated);
+  font-size: 0.85rem;
+}
+
+.term-item:last-child {
+  margin-bottom: 0;
+}
+
+.term-item input {
+  padding: 0;
+}
+
+.term-item-label {
+  flex: 1;
+}
+
+.term-item-dates {
+  font-size: 0.75rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.term-delete,
+.year-delete,
+.goal-delete,
+.template-delete,
+.excluded-title-delete,
+.period-delete {
+  min-width: 1.9rem;
+  min-height: 1.9rem;
+  padding: 0.3rem;
+  font-size: 0.75rem;
+  color: #dc2626;
+}
+
+.term-delete:hover,
+.year-delete:hover,
+.goal-delete:hover,
+.template-delete:hover,
+.excluded-title-delete:hover,
+.period-delete:hover {
+  background: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+}
+
+.term-edit,
+.year-edit,
+.goal-edit,
+.template-edit,
+.period-edit,
+.template-use {
+  min-width: 1.9rem;
+  min-height: 1.9rem;
+  padding: 0.3rem;
+  font-size: 0.75rem;
+}
+
+.term-form {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.term-dates {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.term-dates input {
+  flex: 1;
+  min-width: 0;
+}
+
+.year-group {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.year-group:last-child {
+  border-bottom: none;
+}
+
+.year-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+.year-group-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.year-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.term-items {
+  margin-bottom: 0.5rem;
+}
+
+.year-edit-form,
+.term-edit-form {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.4rem 0;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.edit-actions button {
+  min-height: 2.1rem;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+}
+
+.edit-actions button[type="submit"] {
+  background: var(--bg-elevated);
+  color: var(--fg);
+  border: 1px solid var(--border);
+}
+
+.add-term-form {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.add-term-form .btn-add {
+  width: 2.5rem;
+  height: 2.5rem;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  justify-self: end;
+  padding: 0;
+}
+
+.table-scroll {
+  overflow-x: auto;
+  margin-top: 1rem;
+  padding: 0.4rem 0.6rem;
+  background: var(--bg-elevated);
+  border-radius: 1rem;
+  box-shadow: var(--card-shadow);
+  -webkit-overflow-scrolling: touch;
+}
+
+.curriculum-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 720px;
+  font-size: 0.85rem;
+}
+
+.curriculum-table th,
+.curriculum-table td {
+  border: none;
+  border-bottom: 1px solid var(--border);
+  padding: 0.5rem 0.6rem;
+  vertical-align: top;
+  text-align: left;
+}
+
+.curriculum-table tr:last-child td {
+  border-bottom: none;
+}
+
+.curriculum-table th {
+  background: var(--bg-elevated);
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+}
+
+.curriculum-table td:nth-child(1),
+.curriculum-table td:nth-child(2) {
+  white-space: nowrap;
+  text-align: center;
+}
+
+.curriculum-table td:nth-child(3) {
+  white-space: nowrap;
+}
+
+#record-table td:nth-child(1) {
+  text-align: left;
+}
+
+.curriculum-table textarea {
+  width: 100%;
+  min-width: 160px;
+  resize: vertical;
+}
+
+.curriculum-table input[type="checkbox"] {
+  padding: 0;
+}
+
+.curriculum-search-bar {
+  margin-bottom: 0.5rem;
+}
+
+.curriculum-print-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.curriculum-print-name-row input {
+  flex: 1;
+  max-width: 260px;
+}
+
+#student-memo {
+  width: 100%;
+  resize: vertical;
+}
+
+.collapsible-section {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.collapsible-section h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.collapsible-section .panel-header {
+  margin-bottom: 0;
+}
+
+.collapsible-section .accordion-body {
+  margin-top: 0.5rem;
+}
+
+.section-header-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.section-print-checkbox {
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+
+.section-chevron {
+  font-size: 0.75rem;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.section-toggle[aria-expanded="false"] .section-chevron {
+  transform: rotate(-90deg);
+}
+
+.goals-columns {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.goals-column {
+  min-width: 0;
+}
+
+@media (min-width: 641px) {
+  .goals-columns {
+    flex-direction: row;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.25rem;
+  }
+
+  .goals-column {
+    flex: 1 0 200px;
+    min-width: 200px;
+  }
+}
+
+.goals-column h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.goal-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.goal-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+}
+
+.goal-item input[type="checkbox"] {
+  padding: 0;
+  margin-top: 0.15rem;
+}
+
+.goal-item-text {
+  flex: 1;
+  word-break: break-word;
+}
+
+.goal-item.completed .goal-item-text {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.goal-edit-list,
+.goal-template-list {
+  margin-bottom: 0.5rem;
+}
+
+.goal-move-up,
+.goal-move-down,
+.template-move-up,
+.template-move-down,
+.period-move-up,
+.period-move-down {
+  min-width: 1.9rem;
+  min-height: 1.9rem;
+  padding: 0.3rem;
+  font-size: 0.75rem;
+}
+
+.school-checklist {
+  max-height: 40vh;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  padding: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.rank-select-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.rank-select {
+  flex: 1;
+}
+
+.materials-add-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.materials-add-row select {
+  flex: 1;
+  min-width: 0;
+}
+
+.materials-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+@media (min-width: 641px) {
+  .materials-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.material-block.dragging {
+  opacity: 0.5;
+}
+
+.material-block-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+  touch-action: none;
+}
+
+.material-block-header h4 {
+  flex: 1;
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.material-chevron {
+  font-size: 0.7rem;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.material-block.collapsed .material-chevron {
+  transform: rotate(-90deg);
+}
+
+.material-block.collapsed .chapter-progress-list {
+  display: none;
+}
+
+.material-drag-handle {
+  color: var(--muted);
+  font-size: 0.8rem;
+  cursor: grab;
+}
+
+.material-block-remove {
+  min-width: 1.9rem;
+  min-height: 1.9rem;
+  padding: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.chapter-progress-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.chapter-progress-list label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.chapter-progress-list input[type="checkbox"] {
+  padding: 0;
+  margin-top: 0.15rem;
+}
+
+.chapter-progress-list .completed {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.print-only {
+  display: none;
+}
+
+@media print {
+  /* 印刷はいつも白紙に黒文字が基本。画面用のグラデーション背景・ダーク
+     テーマの配色を持ち込まず、常に明るい配色に固定する。 */
+  :root {
+    --bg: #ffffff !important;
+    --bg-elevated: #ffffff !important;
+    --bg-hover: #f2f2f3 !important;
+    --fg: #1a1a1a !important;
+    --muted: #555555 !important;
+    --border: #cccccc !important;
+    --bg-gradient: #ffffff !important;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+  }
+
+  .page-header,
+  .user-bar,
+  #action-error,
+  #auth-error,
+  .page-tabs,
+  .print-btn,
+  .view-toggle,
+  #clear-name-filter,
+  .calendar-nav button,
+  .name-token-filter,
+  .curriculum-search-bar,
+  .curriculum-print-name-row,
+  .collapsible-section .panel-header button,
+  .section-chevron,
+  .section-print-checkbox,
+  .materials-add-row,
+  .material-drag-handle,
+  .material-block-remove,
+  .goal-item input[type="checkbox"],
+  .chapter-progress-list input[type="checkbox"],
+  .curriculum-table input[type="checkbox"],
+  dialog {
+    display: none !important;
+  }
+
+  /* 画面用の影は紙面では汚れて見えるだけなので消し、代わりに
+     細い罫線で境界をはっきりさせる。色分けの左バーはそのまま活かす。 */
+  .event-item,
+  .cal-event,
+  .table-scroll,
+  .module-card {
+    box-shadow: none !important;
+  }
+
+  .event-item {
+    border: 1px solid var(--border);
+    border-left-width: 4px;
+  }
+
+  .cal-event {
+    border: 1px solid var(--border);
+    border-left-width: 3px;
+  }
+
+  .table-scroll {
+    border: 1px solid var(--border);
+  }
+
+  /* セクション左のチェックボックスでチェックを外したセクションは印刷しない */
+  .collapsible-section.no-print {
+    display: none !important;
+  }
+
+  /* ネイティブのチェックボックスは印刷時の見た目が環境によって崩れるため、
+     チェック状態は目標・チャプターは取り消し線、授業進行はチェックマークで表す。 */
+  .curriculum-table tr[data-completed="1"] td:first-child::after {
+    content: "✓";
+    font-weight: bold;
+  }
+
+  .print-only {
+    display: block;
+  }
+
+  /* アコーディオンの折りたたみ状態に関わらず、印刷時は全セクションを表示する */
+  .accordion-body[hidden] {
+    display: block !important;
+  }
+
+  /* 使用教材は画面幅に関わらず印刷時は常に3列表示にする */
+  .materials-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+
+  main {
+    max-width: none;
+    padding: 0;
+  }
+
+  .panel {
+    margin-bottom: 0;
+  }
+
+  .table-scroll {
+    overflow: visible;
+  }
+
+  .curriculum-table {
+    min-width: 0;
+    width: 100%;
+    table-layout: fixed;
+    font-size: 0.7rem;
+  }
+
+  .curriculum-table th,
+  .curriculum-table td {
+    padding: 0.25rem 0.3rem;
+    word-break: break-word;
+  }
+
+  .curriculum-table th:nth-child(1),
+  .curriculum-table td:nth-child(1) {
+    width: 5%;
+  }
+
+  .curriculum-table th:nth-child(2),
+  .curriculum-table td:nth-child(2) {
+    width: 7%;
+  }
+
+  .curriculum-table th:nth-child(3),
+  .curriculum-table td:nth-child(3) {
+    width: 16%;
+    white-space: normal;
+  }
+
+  .curriculum-table th:nth-child(4),
+  .curriculum-table td:nth-child(4),
+  .curriculum-table th:nth-child(5),
+  .curriculum-table td:nth-child(5),
+  .curriculum-table th:nth-child(6),
+  .curriculum-table td:nth-child(6),
+  .curriculum-table th:nth-child(7),
+  .curriculum-table td:nth-child(7) {
+    width: 18%;
+  }
+
+  .curriculum-table textarea {
+    width: 100%;
+    min-width: 0;
+    border: none;
+    padding: 0;
+    resize: none;
+    overflow: visible;
+    background: transparent;
+    word-break: break-word;
+  }
+}
+
+
+/* 授業予定: 日付選択と予定詳細を主役にする専用レイアウト */
+.schedule-panel { max-width: 880px; margin-inline: auto; }
+.schedule-heading { margin-bottom: 1.15rem; }
+.schedule-heading h2 { font-size: 1.35rem; letter-spacing: .02em; }
+.eyebrow { margin: 0 0 .25rem; color: var(--accent); font-size: .68rem; font-weight: 800; letter-spacing: .12em; }
+.schedule-header-actions { display: flex; gap: .4rem; }
+.schedule-week-nav { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .35rem; margin: 0 -0.15rem 1rem; }
+.schedule-week-nav > button { min-width: 2.35rem; min-height: 2.35rem; padding: .35rem; border: 1px solid var(--border); background: var(--bg-elevated); box-shadow: var(--card-shadow); }
+.schedule-week-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .28rem; padding: .28rem; background: color-mix(in srgb, var(--bg-elevated) 92%, var(--accent) 8%); border: 1px solid var(--border); border-radius: 1rem; }
+.schedule-day-btn { min-width: 0; min-height: 3.6rem; padding: .35rem .1rem; border-radius: .75rem; color: var(--muted); display: grid; gap: .1rem; background: transparent; }
+.schedule-day-btn:hover { background: var(--bg-hover); }
+.schedule-day-btn span { font-size: .68rem; font-weight: 600; }
+.schedule-day-btn strong { font-size: 1.05rem; line-height: 1.1; }
+.schedule-day-btn[aria-pressed="true"] { background: var(--accent); color: #fff; box-shadow: 0 5px 14px color-mix(in srgb, var(--accent) 28%, transparent); }
+#event-list { gap: .7rem; }
+.event-item { min-height: 7.25rem; padding: 0; overflow: hidden; border: 1px solid var(--border); border-left: 5px solid var(--item-accent); border-radius: 1.05rem; display: grid; grid-template-columns: 5.5rem minmax(0, 1fr) 2.7rem; align-items: stretch; gap: 0; }
+.event-time { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: .15rem; padding: .75rem .45rem; border-right: 1px solid var(--border); color: var(--item-accent); font-variant-numeric: tabular-nums; }
+.event-time span { font-size: 1.12rem; font-weight: 750; }
+.event-time small { color: var(--muted); font-size: .67rem; }
+.event-main { min-width: 0; padding: .8rem .9rem; }
+.event-student-name { min-width: 0; min-height: 0; padding: 0; color: var(--fg); font-size: 1rem; font-weight: 750; justify-content: flex-start; text-align: left; }
+.event-student-name:hover { background: transparent; color: var(--accent); }
+.event-details { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .4rem .8rem; margin: .52rem 0 0; }
+.event-details div { min-width: 0; }
+.event-details dt { margin: 0 0 .12rem; color: var(--muted); font-size: .65rem; font-weight: 700; }
+.event-details dd { margin: 0; color: var(--fg); font-size: .78rem; line-height: 1.35; overflow-wrap: anywhere; white-space: pre-wrap; }
+.event-filter-menu { align-self: center; min-width: 2.25rem; min-height: 2.25rem; margin-right: .4rem; padding: .3rem; color: var(--muted); }
+.event-filter-menu:hover { color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.schedule-empty { padding: 1.25rem; color: var(--muted); text-align: center; background: var(--bg-elevated); border: 1px dashed var(--border); border-radius: 1rem; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+@media (max-width: 560px) {
+  main { padding: 1rem; }
+  .event-item { grid-template-columns: 4.5rem minmax(0, 1fr) 2.35rem; }
+  .event-details { grid-template-columns: 1fr; gap: .28rem; }
+  .event-main { padding: .68rem .65rem; }
+  .event-time span { font-size: .98rem; }
+}
+@media print {
+  .schedule-week-nav, .event-filter-menu { display: none !important; }
+  .event-item { grid-template-columns: 5.5rem 1fr; box-shadow: none !important; }
+}
+
+
+/* 授業記録・カリキュラム: 授業予定と共通の余白、カード、淡いアクセントで統一 */
+.record-panel,
+.curriculum-panel {
+  max-width: 1120px;
+  margin-inline: auto;
+}
+
+.record-panel > .panel-header,
+.curriculum-panel > .panel-header:first-child {
+  margin-bottom: 1rem;
+  padding: .15rem 0;
+}
+
+.record-panel .panel-header h2,
+.curriculum-panel > .panel-header:first-child h2 {
+  font-size: 1.35rem;
+  letter-spacing: .02em;
+}
+
+.record-panel .panel-header h2 i,
+.curriculum-panel > .panel-header:first-child h2 i {
+  color: var(--accent);
+}
+
+.record-panel .hint {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.4rem;
+  margin: .1rem 0 .65rem;
+  padding: .45rem .75rem;
+  background: color-mix(in srgb, var(--bg-elevated) 88%, var(--accent) 12%);
+  border: 1px solid var(--border);
+  border-radius: .8rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.record-panel .view-toggle {
+  padding: .22rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: .95rem;
+  box-shadow: var(--card-shadow);
+}
+
+.record-panel .record-day-btn {
+  min-height: 2.2rem;
+  border: none;
+  border-radius: .72rem;
+  background: transparent;
+}
+
+.record-panel .record-day-btn[aria-pressed="true"] {
+  background: var(--accent);
+  color: #fff;
+}
+
+.record-panel .table-scroll,
+.curriculum-panel .table-scroll {
+  margin-top: .3rem;
+  padding: .35rem .55rem;
+  border: 1px solid var(--border);
+  border-radius: 1.15rem;
+  background: var(--bg-elevated);
+  box-shadow: var(--card-shadow);
+}
+
+.record-panel .curriculum-table,
+.curriculum-panel .curriculum-table {
+  font-size: .84rem;
+}
+
+.record-panel .curriculum-table th,
+.curriculum-panel .curriculum-table th {
+  padding: .8rem .65rem;
+  background: color-mix(in srgb, var(--bg-elevated) 92%, var(--accent) 8%);
+  color: var(--muted);
+  font-size: .72rem;
+  letter-spacing: .03em;
+}
+
+.record-panel .curriculum-table td,
+.curriculum-panel .curriculum-table td {
+  padding: .72rem .65rem;
+}
+
+.record-panel .curriculum-table tbody tr,
+.curriculum-panel .curriculum-table tbody tr {
+  transition: background-color .15s ease;
+}
+
+.record-panel .curriculum-table tbody tr:hover,
+.curriculum-panel .curriculum-table tbody tr:hover {
+  background: color-mix(in srgb, var(--bg-hover) 72%, transparent);
+}
+
+.record-panel .record-student-link {
+  padding: .2rem 0;
+  color: var(--fg);
+  font-weight: 750;
+}
+
+.record-panel .record-avatar {
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: .65rem;
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-elevated));
+  color: var(--accent);
+}
+
+.record-panel .curriculum-table textarea,
+.curriculum-panel .curriculum-table textarea {
+  min-height: 3.25rem;
+  border-radius: .7rem;
+  border-color: transparent;
+  background: color-mix(in srgb, var(--bg-elevated) 88%, var(--accent) 12%);
+  font-size: .78rem;
+  line-height: 1.45;
+}
+
+.record-panel .curriculum-table textarea:focus,
+.curriculum-panel .curriculum-table textarea:focus {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: var(--bg-elevated);
+}
+
+/* 生徒情報（カリキュラム）を、情報のまとまりごとのカードとして扱う */
+.curriculum-panel .curriculum-search-bar {
+  padding: .75rem .9rem;
+  margin: 0 0 .75rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--bg-elevated);
+  box-shadow: var(--card-shadow);
+}
+
+.curriculum-panel .curriculum-search-bar .hint {
+  margin: 0;
+  font-size: .88rem;
+}
+
+.curriculum-panel .curriculum-search-bar button {
+  color: var(--accent);
+}
+
+.curriculum-panel .curriculum-print-name-row {
+  margin: 0 0 .9rem;
+  padding: .7rem .85rem;
+  border: 1px solid var(--border);
+  border-radius: .95rem;
+  background: color-mix(in srgb, var(--bg-elevated) 90%, var(--accent) 10%);
+}
+
+.curriculum-panel .curriculum-print-name-row label {
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.curriculum-panel .collapsible-section {
+  margin-top: .8rem;
+  padding: .95rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 1.1rem;
+  background: var(--bg-elevated);
+  box-shadow: var(--card-shadow);
+}
+
+.curriculum-panel .collapsible-section .panel-header {
+  margin-bottom: 0;
+}
+
+.curriculum-panel .collapsible-section h3 {
+  font-size: 1rem;
+  letter-spacing: .01em;
+}
+
+.curriculum-panel .section-print-checkbox {
+  width: 1.12rem;
+  height: 1.12rem;
+}
+
+.curriculum-panel .accordion-body {
+  padding-top: .35rem;
+}
+
+.curriculum-panel .goals-columns {
+  gap: .65rem;
+}
+
+.curriculum-panel .goals-column {
+  padding: .7rem;
+  border-radius: .85rem;
+  background: color-mix(in srgb, var(--bg-elevated) 90%, var(--accent) 10%);
+}
+
+.curriculum-panel .goals-column h4 {
+  color: var(--accent);
+  font-size: .76rem;
+  letter-spacing: .03em;
+}
+
+.curriculum-panel #student-memo {
+  min-height: 6rem;
+  border-radius: .8rem;
+  background: color-mix(in srgb, var(--bg-elevated) 90%, var(--accent) 10%);
+}
+
+.curriculum-panel .materials-add-row select {
+  background: color-mix(in srgb, var(--bg-elevated) 88%, var(--accent) 12%);
+}
+
+.curriculum-panel .btn-add {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 6px 15px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.curriculum-panel .materials-grid {
+  gap: .6rem;
+}
+
+.curriculum-panel .material-block {
+  padding: .7rem;
+  border: 1px solid var(--border);
+  border-radius: .85rem;
+  background: color-mix(in srgb, var(--bg-elevated) 94%, var(--accent) 6%);
+}
+
+@media (max-width: 640px) {
+  .record-panel .panel-header,
+  .curriculum-panel > .panel-header:first-child {
+    align-items: flex-start;
+  }
+
+  .record-panel .view-toggle {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .curriculum-panel .collapsible-section {
+    padding: .85rem .8rem;
+  }
+}
+
+
+/* 3つの主画面ヘッダーを同じリズムにそろえる */
+.record-heading,
+.curriculum-heading {
+  align-items: flex-start;
+}
+
+.record-heading .eyebrow,
+.curriculum-heading .eyebrow {
+  margin-bottom: .25rem;
+}
+
+.record-heading h2 i,
+.curriculum-heading h2 i {
+  color: var(--accent);
+}
+
+/* 文字のない操作は、本文ボタンより一段控えめなサイズに統一 */
+button:has(> i:only-child) {
+  min-width: 2.1rem;
+  min-height: 2.1rem;
+  padding: .35rem;
+  font-size: .85rem;
+}
+
+@media (max-width: 640px) {
+  .record-heading,
+  .curriculum-heading {
+    align-items: flex-start;
+  }
+}
+
+
+/* 画面最上部のタイトルは、カードではなく画面に沿うフラットなヘッダーにする */
+.page-header {
+  margin: 0;
+  padding: .9rem 1rem .8rem;
+  border-radius: 0;
+  box-shadow: none;
+  border-bottom: 1px solid var(--border);
+}
+
+@media (min-width: 900px) {
+  .page-header {
+    margin-left: 0;
+    margin-right: 0;
+    max-width: none;
+  }
+}
+
+.page-header h1 {
+  font-size: 1.05rem;
+}
+
+.record-panel .table-scroll {
+  padding: 0;
+  overflow-x: auto;
+}
+
+.record-panel .curriculum-table th {
+  background: var(--bg-elevated);
+}
+
+.record-panel .record-student-link {
+  gap: .3rem;
+  padding: .05rem 0;
+}
+
+.record-panel .record-avatar {
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font-size: .62rem;
+}
+
+
+/* 授業予定の一覧・カレンダー切替 */
+.schedule-view-toggle {
+  display: inline-flex;
+  width: auto;
+  margin: -.25rem 0 .85rem;
+  padding: .22rem;
+  border: 1px solid var(--border);
+  border-radius: .9rem;
+  background: var(--bg-elevated);
+  box-shadow: var(--card-shadow);
+}
+
+.schedule-view-toggle .view-toggle-btn {
+  min-height: 2.15rem;
+  padding: .38rem .7rem;
+  border: 0;
+  border-radius: .68rem;
+  background: transparent;
+  color: var(--muted);
+  font-size: .78rem;
+}
+
+.schedule-view-toggle .view-toggle-btn[aria-pressed="true"] {
+  background: var(--accent);
+  color: #fff;
+}
+
+.event-time small:empty {
+  display: none;
+}
+
+.cal-event {
+  min-width: 0;
+  min-height: 0;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: .16rem;
+  padding: .28rem .34rem;
+  border: 0;
+  border-left: 3px solid var(--item-accent);
+  border-radius: .45rem;
+  background: color-mix(in srgb, var(--bg-elevated) 90%, var(--item-accent) 10%);
+  color: var(--fg);
+  font-size: .66rem;
+  line-height: 1.25;
+  text-align: left;
+  white-space: normal;
+}
+
+.cal-event:hover {
+  background: color-mix(in srgb, var(--item-accent) 18%, var(--bg-elevated));
+  color: var(--accent);
+}
+
+.cal-event-time {
+  color: var(--muted);
+  font-size: .58rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 560px) {
+  .schedule-view-toggle {
+    width: 100%;
+  }
+
+  .schedule-view-toggle .view-toggle-btn {
+    flex: 1;
+  }
+}
+
+
+/* 設定で除外した空き枠は、授業予定の一覧だけで控えめに表示する */
+.event-item.event-empty-slot {
+  min-height: 3.7rem;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  background: color-mix(in srgb, var(--bg-elevated) 94%, var(--item-accent) 6%);
+}
+
+.event-empty-slot .event-time {
+  padding: .45rem;
+}
+
+.event-empty-slot .event-time span {
+  font-size: .98rem;
+}
+
+.event-empty-label {
+  display: flex;
+  align-items: center;
+  padding: .55rem .85rem;
+  color: var(--muted);
+  font-size: .82rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+}
+
+@media (max-width: 560px) {
+  .event-item.event-empty-slot {
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+  }
+}
+
+
+/* 授業記録は生徒名と前回情報を優先して読める列幅にする */
+#record-table th:first-child,
+#record-table td:first-child {
+  width: 30%;
+  min-width: 13rem;
+}
+
+.record-panel .record-student-link {
+  gap: .2rem;
+  padding: 0;
+}
+
+.record-panel .record-avatar {
+  width: 1.38rem;
+  height: 1.38rem;
+  font-size: .54rem;
+}
+
+.schedule-heading h2 i {
+  color: var(--accent);
+}
+
+
+/* 表示切替は授業予定の見出し直下に置く */
+.schedule-heading + .schedule-view-toggle {
+  margin-top: -.15rem;
+}
+
+/* 月間カレンダーは独立した白いカードとして見せる */
+#calendar-view {
+  padding: .75rem;
+  border: 1px solid var(--border);
+  border-radius: .6rem;
+  background: var(--bg-elevated);
+  box-shadow: var(--card-shadow);
+}
+
+#calendar-view .calendar-nav {
+  margin-bottom: .7rem;
+}
+
+#calendar-view .cal-cell {
+  border-radius: .35rem;
+  background: var(--bg-elevated);
+}
+
+#calendar-view .cal-cell-empty {
+  background: transparent;
+}
+
+/* 角丸を全体で控えめに統一。円形で意味を持つ要素は維持する */
+button {
+  border-radius: .7rem;
+}
+
+input,
+select,
+textarea {
+  border-radius: .35rem;
+}
+
+.page-tabs,
+.schedule-week-days,
+.view-toggle,
+.schedule-view-toggle,
+.table-scroll,
+.curriculum-panel .collapsible-section,
+.curriculum-panel .curriculum-search-bar,
+.curriculum-panel .curriculum-print-name-row,
+#calendar-view,
+.event-item,
+.schedule-empty,
+.module-card {
+  border-radius: .55rem;
+}
+
+.page-tab-btn,
+.schedule-day-btn,
+.record-panel .record-day-btn,
+.schedule-view-toggle .view-toggle-btn {
+  border-radius: .38rem;
+}
+
+dialog.app-modal {
+  border-radius: .65rem;
+}
+
+.record-avatar,
+.calendar-color-dot,
+#user-avatar {
+  border-radius: 50%;
+}
+
+
+/* 表示書体はM PLUS 1pの400を基本とする */
+body {
+  font-family: "M PLUS 1p", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-weight: 400;
+}
+
+.record-panel .record-prev-info {
+  margin-left: .35rem;
+}
+
+
+/* 上部ヘッダーは画面上部に留め、本文の読み進め中も操作の起点を維持する */
+.page-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  padding-top: .6rem;
+  padding-bottom: .55rem;
+}
+
+/* 月間カレンダーは共通テーマの一枚のカードとして表示する */
+#calendar-view {
+  padding: .9rem;
+  background: var(--bg-elevated);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: .55rem;
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+
+#calendar-view .calendar-nav,
+#calendar-view .calendar-grid {
+  background: var(--bg-elevated);
+}
+
+#calendar-view .calendar-grid {
+  padding: .35rem;
+  border: 1px solid var(--border);
+  border-radius: .4rem;
+  gap: .25rem;
+}
+
+#calendar-view .cal-weekday {
+  color: var(--muted);
+}
+
+#calendar-view .cal-cell {
+  background: var(--bg-elevated);
+  border-color: var(--border);
+}
+
+#calendar-view .cal-cell-empty {
+  background: var(--bg-elevated);
+  border-color: transparent;
+}
+
+#calendar-view .cal-day-num {
+  color: var(--fg);
+}
+
+#calendar-view .cal-event {
+  color: var(--fg);
+}
+
+#calendar-view .cal-more {
+  color: var(--muted);
+}
+
+
+/* 基本文字は400のまま、視線を置く要素だけ実フォントの太さで明確にする */
+.page-header h1,
+.panel-header h2,
+.schedule-heading h2,
+.record-heading h2,
+.curriculum-heading h2 {
+  font-weight: 700;
+}
+
+.page-tab-btn[aria-selected="true"],
+.schedule-day-btn span,
+.event-time span {
+  font-weight: 500;
+}
+
+.event-student-name,
+.record-panel .record-student-link {
+  font-weight: 700;
+}
+
+.event-details dt,
+.record-panel .record-student-link,
+.record-panel .record-student-link .record-avatar {
+  font-weight: 700;
+}
+
+
+/* 設定は項目を一度に見渡せる2段グリッドにし、操作対象を明確にする */
+#settings-modal {
+  width: min(680px, 94vw);
+  max-height: 82dvh;
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+#settings-modal[open] {
+  display: grid;
+}
+
+#settings-modal .modal-header {
+  padding: .8rem 1rem;
+  background: color-mix(in srgb, var(--bg-elevated) 92%, var(--accent) 8%);
+}
+
+#settings-modal .modal-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .35rem;
+  padding: .65rem .8rem;
+  border-bottom: 1px solid var(--border);
+  overflow: visible;
+}
+
+#settings-modal .tab-btn {
+  min-width: 0;
+  min-height: 2.45rem;
+  justify-content: center;
+  gap: .3rem;
+  padding: .45rem .3rem;
+  border: 1px solid var(--border);
+  border-radius: .4rem;
+  background: var(--bg-elevated);
+  color: var(--muted);
+  font-size: .76rem;
+  font-weight: 500;
+}
+
+#settings-modal .tab-btn:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+#settings-modal .tab-btn[aria-selected="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-elevated));
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);
+  font-weight: 700;
+}
+
+#settings-modal .modal-tab-panel {
+  min-height: 0;
+  max-height: none;
+  padding: 1rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+#settings-modal .modal-tab-panel > .hint:first-child {
+  margin-bottom: .9rem;
+  line-height: 1.6;
+}
+
+.material-settings-section {
+  padding: .9rem;
+  border: 1px solid var(--border);
+  border-radius: .65rem;
+  background: color-mix(in srgb, var(--bg-elevated) 96%, var(--accent) 4%);
+}
+
+.material-settings-section + .material-settings-section {
+  margin-top: 1rem;
+}
+
+.settings-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-bottom: .75rem;
+}
+
+.settings-section-heading h3 {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  margin: 0;
+  font-size: .95rem;
+}
+
+.settings-section-heading .hint {
+  margin: .25rem 0 0;
+  font-size: .76rem;
+}
+
+.material-category-item .material-count {
+  min-width: 2.5rem;
+  padding: .16rem .42rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 7%, var(--bg-elevated));
+  color: var(--accent);
+  font-size: .7rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.material-category-title {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-weight: 700;
+}
+
+.material-category-title .bx {
+  color: var(--accent);
+  font-size: 1rem;
+}
+
+.material-category-edit-form,
+.material-edit-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .5rem;
+  padding: .55rem;
+  margin-bottom: .5rem;
+  border: 1px solid var(--accent);
+  border-radius: .55rem;
+  background: var(--bg-elevated);
+}
+
+.material-category-group {
+  padding: .65rem;
+  margin-bottom: .7rem;
+  border: 1px solid var(--border);
+  border-radius: .6rem;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.material-category-group:last-child {
+  margin-bottom: 0;
+}
+
+.material-category-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  margin: -.65rem -.65rem .65rem;
+  padding: .52rem .65rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, var(--bg-elevated));
+}
+
+.material-category-group-header h4 {
+  display: flex;
+  align-items: center;
+  gap: .42rem;
+  margin: 0;
+  min-width: 0;
+  font-size: .88rem;
+  font-weight: 700;
+}
+
+.material-category-group-header h4 .bx {
+  display: inline-grid;
+  flex: 0 0 1.65rem;
+  width: 1.65rem;
+  height: 1.65rem;
+  place-items: center;
+  border-radius: .36rem;
+  background: color-mix(in srgb, var(--accent) 13%, var(--bg-elevated));
+  color: var(--accent);
+  font-size: .95rem;
+}
+
+.material-category-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.material-category-count {
+  flex: 0 0 auto;
+  padding: .18rem .48rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: var(--accent);
+  font-size: .68rem;
+  font-weight: 600;
+}
+
+.material-category-group .term-item {
+  flex-wrap: wrap;
+  padding: .45rem .55rem;
+}
+
+.material-category-select {
+  width: min(10rem, 32vw);
+  min-height: 2rem;
+  padding: .3rem .45rem;
+  font-size: .76rem;
+}
+
+.material-item-actions {
+  display: flex;
+  gap: .3rem;
+}
+
+.material-item-actions button,
+.material-category-item button {
+  min-width: 1.9rem;
+  min-height: 1.9rem;
+  padding: .3rem;
+  font-size: .75rem;
+}
+
+.material-delete {
+  color: #dc2626;
+}
+
+.material-delete:hover {
+  background: rgba(220, 38, 38, .1);
+  color: #dc2626;
+}
+
+.material-group-empty {
+  margin: 0;
+  padding: .2rem 0;
+  font-size: .76rem;
+}
+
+.material-category-add-form input {
+  flex: 1 1 14rem;
+}
+
+.material-add-form select {
+  flex: 0 1 10rem;
+}
+
+.material-add-form input {
+  flex: 1 1 15rem;
+}
+
+@media (max-width: 560px) {
+  .material-item .term-item-label {
+    flex-basis: calc(100% - 10.5rem);
+  }
+
+  .material-category-select {
+    width: 9.5rem;
+  }
+
+  .material-item-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .material-category-edit-form,
+  .material-edit-form {
+    grid-template-columns: 1fr;
+  }
+
+  .material-add-form select,
+  .material-add-form input {
+    flex-basis: calc(100% - 3rem);
+  }
+}
+
+@media (min-width: 641px) {
+  #settings-modal .modal-tabs {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  #settings-modal .tab-btn {
+    font-size: .74rem;
+  }
+}
+
+
+/* 直線的で落ち着いたUIに寄せる。円形に意味のある要素だけは別途維持する */
+button {
+  border-radius: .38rem;
+}
+
+.btn-add {
+  border-radius: 50%;
+}
+
+/* 設定モーダル内の追加ボタンは、フォーム幅に引き伸ばさず右端に揃える。 */
+#settings-modal .btn-add {
+  display: inline-grid;
+  flex: 0 0 2.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  align-self: end;
+  justify-self: end;
+  place-items: center;
+  margin-left: auto;
+  padding: 0;
+  aspect-ratio: 1;
+}
+
+#settings-modal .btn-add .bx {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.page-tabs,
+.schedule-week-days,
+.view-toggle,
+.schedule-view-toggle,
+.table-scroll,
+.module-card,
+.event-item,
+.schedule-empty,
+#calendar-view,
+.curriculum-panel .curriculum-search-bar,
+.curriculum-panel .curriculum-print-name-row,
+.curriculum-panel .collapsible-section {
+  border-radius: .42rem;
+}
+
+.page-tab-btn,
+.schedule-day-btn,
+.record-panel .record-day-btn,
+.schedule-view-toggle .view-toggle-btn,
+.term-item,
+.school-checklist,
+.curriculum-panel .goals-column,
+.curriculum-panel .material-block {
+  border-radius: .3rem;
+}
+
+.cal-cell,
+.cal-event {
+  border-radius: .22rem;
+}
+
+dialog.app-modal {
+  border-radius: .45rem;
+}
+
+/* 入力欄はごく薄い枠と白に近い単色グレーで、入力可能な面を明確にする */
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  border: 1px solid #e1e4e8;
+  border-radius: .28rem;
+  background: #f8f9fa;
+  font-size: .9rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9);
+}
+
+input:not([type="checkbox"]):not([type="radio"]):focus,
+select:focus,
+textarea:focus {
+  border-color: color-mix(in srgb, var(--accent) 55%, #d7dbe1);
+  background: #fafbfc;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* 表内や生徒情報の入力欄にも同じ入力面を適用する */
+.record-panel .curriculum-table textarea,
+.curriculum-panel .curriculum-table textarea,
+.curriculum-panel #student-memo,
+.curriculum-panel .materials-add-row select {
+  border-color: #e1e4e8;
+  border-radius: .28rem;
+  background: #f8f9fa;
+}
+
+.record-panel .curriculum-table textarea:focus,
+.curriculum-panel .curriculum-table textarea:focus,
+.curriculum-panel #student-memo:focus,
+.curriculum-panel .materials-add-row select:focus {
+  background: #fafbfc;
+}
+
+
+/* 授業予定の表示切替と生徒予定カードは、より直線的な輪郭にする */
+.schedule-view-toggle {
+  border-radius: .22rem;
+}
+
+.schedule-view-toggle .view-toggle-btn {
+  border-radius: .16rem;
+}
+
+.event-item,
+.event-item.event-empty-slot {
+  border-radius: .24rem;
+}
+
+
+/* カリキュラムの授業進行表は、授業記録表と同じフラットな表面にそろえる */
+.curriculum-panel .progress-section .table-scroll {
+  padding: 0;
+  background: var(--bg-elevated);
+}
+
+.curriculum-panel .progress-section .curriculum-table th {
+  background: var(--bg-elevated);
+}
+
+
+/* 授業記録の個別指定が汎用ルールより優先されるため、同じ詳細度で上書きする */
+.record-panel .view-toggle {
+  border-radius: .22rem;
+}
+
+.record-panel .record-day-btn {
+  border-radius: .16rem;
+}
+
+.record-panel .table-scroll {
+  border-radius: .3rem;
+}
+
+
+/* 直線的な基調を保ちながら、触れる面だけ角をわずかにやわらげる */
+button {
+  border-radius: .46rem;
+}
+
+.page-tabs,
+.schedule-week-days,
+.view-toggle,
+.schedule-view-toggle,
+.table-scroll,
+.module-card,
+.event-item,
+.schedule-empty,
+#calendar-view,
+.curriculum-panel .curriculum-search-bar,
+.curriculum-panel .curriculum-print-name-row,
+.curriculum-panel .collapsible-section {
+  border-radius: .52rem;
+}
+
+.page-tab-btn,
+.schedule-day-btn,
+.record-panel .record-day-btn,
+.schedule-view-toggle .view-toggle-btn,
+.term-item,
+.school-checklist,
+.curriculum-panel .goals-column,
+.curriculum-panel .material-block {
+  border-radius: .38rem;
+}
+
+.cal-cell,
+.cal-event {
+  border-radius: .28rem;
+}
+
+dialog.app-modal {
+  border-radius: .55rem;
+}
+
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea,
+.record-panel .curriculum-table textarea,
+.curriculum-panel .curriculum-table textarea,
+.curriculum-panel #student-memo,
+.curriculum-panel .materials-add-row select {
+  border-radius: .35rem;
+}
+
+.schedule-view-toggle {
+  border-radius: .32rem;
+}
+
+.schedule-view-toggle .view-toggle-btn {
+  border-radius: .25rem;
+}
+
+.event-item,
+.event-item.event-empty-slot {
+  border-radius: .34rem;
+}
+
+.record-panel .view-toggle {
+  border-radius: .32rem;
+}
+
+.record-panel .record-day-btn {
+  border-radius: .25rem;
+}
+
+.record-panel .table-scroll {
+  border-radius: .42rem;
+}
+
+
+/* 生徒メモは補足情報として、本文入力欄より一段小さくする */
+.curriculum-panel #student-memo {
+  font-size: .8rem;
+}
+
+
+/* 授業進行表だけは、カリキュラム内でもやや直線的な外枠にする */
+.curriculum-panel .progress-section .table-scroll {
+  border-radius: .42rem;
+}
+
+
+/* 授業進行はセクション全体の角丸を他とそろえ、表外枠だけを控えめにする */
+.curriculum-panel .progress-section .table-scroll {
+  border-radius: .3rem;
+}
+
+
+/* 授業記録の空き枠は、カレンダー色を左端に残した低い行として扱う */
+.record-panel #record-table .record-empty-slot {
+  --record-calendar-accent: var(--border);
+}
+
+.record-panel #record-table .record-empty-slot td {
+  padding: .34rem .65rem;
+  background: color-mix(in srgb, var(--bg-elevated) 94%, var(--record-calendar-accent) 6%);
+  vertical-align: middle;
+}
+
+.record-panel #record-table .record-empty-slot td:first-child {
+  border-left: 4px solid var(--record-calendar-accent);
+}
+
+.record-empty-label {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  color: var(--muted);
+  font-size: .78rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.record-empty-label i {
+  color: var(--record-calendar-accent);
+  font-size: .9rem;
+}
+
+.record-empty-label small {
+  color: var(--muted);
+  font-size: .68rem;
+}
+
+.record-empty-time {
+  color: var(--record-calendar-accent);
+  font-size: .78rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+
+/* 教材管理: 授業管理と共通の階層・配色で、フォルダ一覧とアップロードを構成する */
+.material-page-tabs {
+  position: sticky;
+  top: 3.15rem;
+  z-index: 20;
+}
+
+.material-panel {
+  padding: 1rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: .52rem;
+  box-shadow: var(--card-shadow);
+}
+
+.material-heading {
+  margin-bottom: .85rem;
+}
+
+.material-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.material-heading h2 i {
+  color: var(--accent);
+}
+
+.material-small-btn {
+  min-height: 2rem;
+  padding: .35rem .55rem;
+  font-size: .78rem;
+  border-radius: .4rem;
+}
+
+.material-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: .15rem;
+  min-height: 2rem;
+  margin-bottom: .7rem;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+}
+
+.material-breadcrumb-btn {
+  min-width: 0;
+  min-height: 1.8rem;
+  padding: .2rem .35rem;
+  color: var(--muted);
+  font-size: .76rem;
+  border-radius: .32rem;
+}
+
+.material-breadcrumb-btn:last-child {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.material-breadcrumb-separator {
+  color: var(--muted);
+  font-size: .85rem;
+}
+
+.material-toolbar {
+  margin-bottom: .8rem;
+}
+
+.material-search {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  padding: 0 .55rem;
+  border: 1px solid var(--border);
+  border-radius: .4rem;
+  background: var(--bg-hover);
+  color: var(--muted);
+}
+
+.material-search input {
+  width: 100%;
+  min-width: 0;
+  padding: .5rem 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: .82rem;
+}
+
+.material-search input:focus {
+  background: transparent;
+}
+
+.material-folder-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .55rem;
+  margin-bottom: 1rem;
+}
+
+.material-folder-card {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: .46rem;
+  background: var(--bg-elevated);
+  box-shadow: var(--card-shadow);
+}
+
+.material-folder-open {
+  flex: 1;
+  min-width: 0;
+  min-height: 3.5rem;
+  justify-content: flex-start;
+  padding: .55rem .45rem .55rem .65rem;
+  color: var(--fg);
+  text-align: left;
+}
+
+.material-folder-open > .bx-chevron-right {
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.material-folder-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border-radius: .38rem;
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-elevated));
+  color: var(--accent);
+  font-size: 1.15rem;
+}
+
+.material-folder-copy,
+.material-file-copy,
+.material-upload-copy {
+  display: grid;
+  min-width: 0;
+  gap: .1rem;
+  flex: 1;
+}
+
+.material-folder-copy strong,
+.material-file-copy strong,
+.material-upload-copy strong {
+  overflow: hidden;
+  color: var(--fg);
+  font-size: .82rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.material-folder-copy small,
+.material-file-copy small,
+.material-upload-copy small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: .68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.material-icon-btn {
+  min-width: 1.85rem;
+  min-height: 1.85rem;
+  padding: .25rem;
+  border-radius: .34rem;
+  font-size: .9rem;
+}
+
+.material-folder-card > .material-icon-btn {
+  margin-right: .3rem;
+}
+
+.material-file-section {
+  padding-top: .75rem;
+  border-top: 1px solid var(--border);
+}
+
+.material-file-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: .4rem;
+}
+
+.material-file-heading h3 {
+  margin: 0;
+  font-size: .86rem;
+  font-weight: 700;
+}
+
+.material-count {
+  color: var(--muted);
+  font-size: .7rem;
+}
+
+.material-file-list,
+.material-upload-queue {
+  display: grid;
+  gap: .35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.material-file-item {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .55rem .45rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.material-file-item:last-child {
+  border-bottom: 0;
+}
+
+.material-file-info {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.material-file-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  flex-shrink: 0;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-radius: .36rem;
+  color: var(--accent);
+  font-size: 1rem;
+}
+
+.material-file-actions {
+  display: flex;
+  gap: .15rem;
+  flex-shrink: 0;
+}
+
+.material-empty {
+  display: grid;
+  justify-items: center;
+  gap: .35rem;
+  padding: 2.2rem 1rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.material-empty[hidden] {
+  display: none !important;
+}
+
+.material-empty i {
+  font-size: 2rem;
+}
+
+.material-empty p {
+  margin: 0;
+  font-size: .8rem;
+}
+
+.material-upload-folder,
+.material-dialog-field {
+  display: grid;
+  gap: .35rem;
+  margin-bottom: .8rem;
+  color: var(--muted);
+  font-size: .75rem;
+}
+
+.material-upload-folder select,
+.material-dialog-field input {
+  width: 100%;
+  background: var(--bg-hover);
+  font-size: .82rem;
+}
+
+.material-dropzone {
+  display: grid;
+  justify-items: center;
+  gap: .4rem;
+  padding: 2rem 1rem;
+  border: 1px dashed color-mix(in srgb, var(--accent) 45%, var(--border));
+  border-radius: .5rem;
+  background: color-mix(in srgb, var(--accent) 3%, var(--bg-elevated));
+  color: var(--muted);
+  cursor: pointer;
+  text-align: center;
+  transition: background-color .15s ease, border-color .15s ease;
+}
+
+.material-dropzone:hover,
+.material-dropzone.is-dragging {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-elevated));
+}
+
+.material-dropzone strong {
+  color: var(--fg);
+  font-size: .86rem;
+  font-weight: 600;
+}
+
+.material-dropzone > span:last-child {
+  font-size: .72rem;
+}
+
+.material-dropzone-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.8rem;
+  height: 2.8rem;
+  border-radius: .5rem;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 1.5rem;
+}
+
+.material-upload-queue {
+  margin-top: .8rem;
+}
+
+.material-upload-item {
+  padding: .55rem .6rem;
+  border: 1px solid var(--border);
+  border-radius: .42rem;
+  background: var(--bg-elevated);
+}
+
+.material-upload-item-row {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.material-upload-item.is-done .material-file-icon {
+  border-color: #22a06b;
+  color: #22a06b;
+}
+
+.material-upload-item.is-error .material-file-icon,
+.material-upload-item.is-error small {
+  border-color: #dc2626;
+  color: #dc2626;
+}
+
+.material-progress {
+  height: .18rem;
+  margin-top: .45rem;
+  overflow: hidden;
+  border-radius: .1rem;
+  background: var(--bg-hover);
+}
+
+.material-progress span {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--accent);
+  transition: width .15s ease;
+}
+
+.material-upload-start {
+  width: 100%;
+  margin-top: .8rem;
+  border-radius: .42rem;
+}
+
+@media (max-width: 640px) {
+  .material-page-tabs {
+    top: 2.95rem;
+  }
+
+  .material-panel {
+    padding: .8rem;
+  }
+
+  .material-folder-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .material-heading h2 {
+    font-size: 1.1rem;
+  }
+}
+
+:root[data-theme="dark"] .material-search,
+:root[data-theme="dark"] .material-upload-folder select,
+:root[data-theme="dark"] .material-dialog-field input {
+  background: color-mix(in srgb, var(--bg-elevated) 94%, #ffffff 6%);
+}
+
+
+/* 教材管理: 移動・閲覧・リネームとファイル種別表示 */
+.material-file-item {
+  cursor: grab;
+}
+
+.material-file-item:active {
+  cursor: grabbing;
+}
+
+.material-file-item.is-dragging {
+  opacity: .42;
+}
+
+.material-folder-card.is-drop-target,
+.material-breadcrumb-btn.is-drop-target {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-elevated));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.material-file-icon.is-pdf {
+  border-color: color-mix(in srgb, #dc2626 45%, var(--border));
+  color: #dc2626;
+}
+
+.material-file-icon.is-word {
+  border-color: color-mix(in srgb, #984324 45%, var(--border));
+  color: #984324;
+}
+
+.material-file-icon.is-sheet {
+  border-color: color-mix(in srgb, #15803d 45%, var(--border));
+  color: #15803d;
+}
+
+.material-file-icon.is-slide {
+  border-color: color-mix(in srgb, #ea580c 45%, var(--border));
+  color: #ea580c;
+}
+
+.material-file-icon.is-image {
+  border-color: color-mix(in srgb, #9333ea 45%, var(--border));
+  color: #9333ea;
+}
+
+.material-file-icon.is-video {
+  border-color: color-mix(in srgb, #db2777 45%, var(--border));
+  color: #db2777;
+}
+
+.material-file-icon.is-audio {
+  border-color: color-mix(in srgb, #7c3aed 45%, var(--border));
+  color: #7c3aed;
+}
+
+.material-file-icon.is-archive {
+  border-color: color-mix(in srgb, #a16207 45%, var(--border));
+  color: #a16207;
+}
+
+.material-file-icon.is-text {
+  border-color: color-mix(in srgb, #475569 45%, var(--border));
+  color: #475569;
+}
+
+.material-preview-modal {
+  width: min(960px, 96vw) !important;
+  max-width: 96vw;
+}
+
+.material-preview-actions {
+  display: flex;
+  align-items: center;
+  gap: .15rem;
+}
+
+.material-preview-actions button {
+  min-width: 1.9rem;
+  min-height: 1.9rem;
+  padding: .25rem;
+  border-radius: .34rem;
+}
+
+.material-preview-body {
+  display: grid;
+  place-items: center;
+  min-height: min(68vh, 680px);
+  max-height: 78vh;
+  overflow: auto;
+  background: var(--bg-hover);
+}
+
+.material-pdf-preview {
+  width: 100%;
+  height: min(72vh, 760px);
+  border: 0;
+  background: var(--bg-elevated);
+}
+
+.material-image-preview {
+  display: block;
+  max-width: 100%;
+  max-height: 72vh;
+  object-fit: contain;
+}
+
+.material-media-preview {
+  width: 100%;
+  max-height: 72vh;
+  background: #111827;
+}
+
+.material-audio-preview {
+  width: min(560px, 90%);
+}
+
+.material-text-preview {
+  width: 100%;
+  min-height: min(68vh, 680px);
+  margin: 0;
+  padding: 1rem;
+  overflow: auto;
+  color: var(--fg);
+  background: var(--bg-elevated);
+  font: 400 .78rem/1.65 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.material-preview-loading,
+.material-preview-unsupported {
+  display: grid;
+  justify-items: center;
+  gap: .45rem;
+  padding: 2rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.material-preview-loading i,
+.material-preview-unsupported i {
+  font-size: 2rem;
+}
+
+.material-preview-unsupported p,
+.material-preview-unsupported small {
+  margin: 0;
+}
+
+.material-preview-unsupported p {
+  color: var(--fg);
+  font-size: .86rem;
+  font-weight: 600;
+}
+
+.material-preview-unsupported small {
+  font-size: .72rem;
+}
+
+@media (max-width: 640px) {
+  .material-file-item {
+    align-items: flex-start;
+  }
+
+  .material-file-actions {
+    display: grid;
+    grid-template-columns: repeat(2, 1.75rem);
+  }
+
+  .material-file-actions .material-icon-btn {
+    min-width: 1.75rem;
+    min-height: 1.75rem;
+  }
+
+  .material-preview-modal {
+    width: 98vw !important;
+    max-width: 98vw;
+  }
+
+  .material-preview-body {
+    min-height: 72vh;
+    max-height: 78vh;
+  }
+
+  .material-pdf-preview {
+    height: 74vh;
+  }
+}
+
+
+/* 教材管理: ドラッグ移動・並べ替え */
+.material-dialog-actions {
+  justify-content: flex-end;
+}
+
+.material-folder-card,
+.material-file-item {
+  position: relative;
+}
+
+.material-folder-card[draggable="true"],
+.material-file-item[draggable="true"] {
+  cursor: grab;
+}
+
+.material-folder-card.is-dragging,
+.material-file-item.is-dragging {
+  opacity: .45;
+  cursor: grabbing;
+}
+
+.material-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  min-width: 1.35rem;
+  color: var(--muted);
+  font-size: .88rem;
+  cursor: grab;
+  touch-action: none;
+}
+
+.material-folder-card > .material-drag-handle {
+  margin-left: .28rem;
+}
+
+.material-file-item > .material-drag-handle {
+  margin-right: -.16rem;
+}
+
+.material-folder-card.is-drop-inside,
+.material-breadcrumb-btn.is-drop-target {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-elevated));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.material-folder-card.is-drop-before::before,
+.material-file-item.is-drop-before::before,
+.material-folder-card.is-drop-after::after,
+.material-file-item.is-drop-after::after {
+  position: absolute;
+  right: .25rem;
+  left: .25rem;
+  z-index: 3;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  content: "";
+  pointer-events: none;
+}
+
+.material-folder-card.is-drop-before::before,
+.material-file-item.is-drop-before::before {
+  top: -2px;
+}
+
+.material-folder-card.is-drop-after::after,
+.material-file-item.is-drop-after::after {
+  bottom: -2px;
+}
+
+.material-folder-card.is-drop-before::before,
+.material-folder-card.is-drop-after::after {
+  right: 0;
+  left: 0;
+}
+
+@media (max-width: 640px) {
+  .material-drag-handle {
+    width: 1.15rem;
+    min-width: 1.15rem;
+  }
+}
+
+
+/* 教材管理: 一覧内アップロード */
+.material-inline-dropzone {
+  display: flex;
+  min-height: 4.2rem;
+  margin: .7rem 0 1rem;
+  padding: .6rem .7rem;
+  flex-direction: row;
+  align-items: center;
+  gap: .65rem;
+  border-radius: .48rem;
+  text-align: left;
+}
+
+.material-inline-dropzone .material-dropzone-icon {
+  width: 2rem;
+  height: 2rem;
+  margin: 0;
+  flex-shrink: 0;
+  border-radius: .38rem;
+  font-size: 1.15rem;
+}
+
+.material-inline-upload-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: .08rem;
+}
+
+.material-inline-upload-copy strong {
+  font-size: .8rem;
+  font-weight: 600;
+}
+
+.material-inline-upload-copy small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: .67rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.material-inline-upload-action {
+  padding: .35rem .55rem;
+  border: 1px solid var(--border);
+  border-radius: .36rem;
+  background: var(--bg-elevated);
+  color: var(--accent);
+  font-size: .72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.material-inline-upload-queue:not(:empty) {
+  margin: -.45rem 0 .65rem;
+  padding: .45rem .55rem;
+  border: 1px solid var(--border);
+  border-radius: .46rem;
+  background: var(--bg-elevated);
+}
+
+.material-inline-upload-start {
+  display: block;
+  width: fit-content;
+  margin: -.35rem 0 .8rem auto;
+}
+
+/* 教材管理: ツリー検索 */
+.material-tree-search {
+  margin: .25rem 0 .65rem;
+}
+
+.material-tree-help {
+  margin: 0 0 .7rem;
+  color: var(--muted);
+  font-size: .7rem;
+}
+
+.material-tree {
+  padding: .35rem 0;
+}
+
+.material-tree-root-heading,
+.material-tree-folder > summary,
+.material-tree-file {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 2.65rem;
+  gap: .45rem;
+  padding: .35rem .4rem;
+  color: var(--fg);
+  text-align: left;
+}
+
+.material-tree-root-heading {
+  border-bottom: 1px solid var(--border);
+  font-size: .82rem;
+}
+
+.material-tree-root-heading > .bx {
+  color: var(--accent);
+  font-size: 1.05rem;
+}
+
+.material-tree-folder {
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+}
+
+.material-tree-folder > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.material-tree-folder > summary::-webkit-details-marker {
+  display: none;
+}
+
+.material-tree-chevron {
+  display: inline-flex;
+  color: var(--muted);
+  transition: transform .15s ease;
+}
+
+.material-tree-folder[open] > summary > .material-tree-chevron {
+  transform: rotate(90deg);
+}
+
+.material-tree-folder > summary .material-folder-icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: .32rem;
+  font-size: 1rem;
+}
+
+.material-tree-folder-copy,
+.material-tree-file-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: .05rem;
+}
+
+.material-tree-folder-copy strong,
+.material-tree-file-copy strong {
+  overflow: hidden;
+  font-size: .78rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.material-tree-folder-copy small,
+.material-tree-file-copy small {
+  color: var(--muted);
+  font-size: .64rem;
+}
+
+.material-tree-children {
+  margin-left: .8rem;
+  padding-left: .65rem;
+  border-left: 1px solid color-mix(in srgb, var(--accent) 25%, var(--border));
+}
+
+.material-tree-file {
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  background: transparent;
+}
+
+.material-tree-file:hover {
+  background: var(--bg-hover);
+}
+
+.material-tree-file .material-file-icon {
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: .3rem;
+  font-size: .92rem;
+}
+
+.material-tree-file > .bx-file-find {
+  color: var(--muted);
+  font-size: .88rem;
+}
+
+.material-tree-branch-empty {
+  display: block;
+  padding: .5rem .35rem;
+  color: var(--muted);
+  font-size: .68rem;
+}
+
+@media (max-width: 640px) {
+  .material-inline-upload-action {
+    font-size: 0;
+  }
+
+  .material-inline-upload-action::after {
+    font-size: .72rem;
+    content: "選択";
+  }
+
+  .material-tree-children {
+    margin-left: .45rem;
+    padding-left: .45rem;
+  }
+}
+
+
+/* 教材管理: CDNに依存しない種類別ファイルアイコン */
+.material-file-icon {
+  --file-color: #64748b;
+  position: relative;
+  width: 1.65rem;
+  height: 2rem;
+  overflow: hidden;
+  border: 0;
+  border-radius: .2rem;
+  background: var(--file-color);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--file-color) 78%, #000);
+  color: #fff;
+  clip-path: polygon(0 0, 70% 0, 100% 25%, 100% 100%, 0 100%);
+}
+
+.material-file-icon::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 30%;
+  height: 25%;
+  background: color-mix(in srgb, var(--file-color) 72%, #fff);
+  clip-path: polygon(0 0, 0 100%, 100% 100%);
+  content: "";
+}
+
+.material-file-mark {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  padding-top: .38rem;
+  color: #fff;
+  font-size: .43rem;
+  font-weight: 700;
+  letter-spacing: -.025em;
+  line-height: 1;
+  text-align: center;
+}
+
+.material-file-icon.is-pdf {
+  --file-color: #dc3f47;
+}
+
+.material-file-icon.is-word {
+  --file-color: #3178c6;
+}
+
+.material-file-icon.is-sheet {
+  --file-color: #26966a;
+}
+
+.material-file-icon.is-slide {
+  --file-color: #e87936;
+}
+
+.material-file-icon.is-image {
+  --file-color: #8b5cc7;
+}
+
+.material-file-icon.is-video {
+  --file-color: #d84f8c;
+}
+
+.material-file-icon.is-audio {
+  --file-color: #6d5bd0;
+}
+
+.material-file-icon.is-archive {
+  --file-color: #b8842f;
+}
+
+.material-file-icon.is-text {
+  --file-color: #687487;
+}
+
+.material-file-icon.is-generic {
+  --file-color: #87909d;
+}
+
+.material-tree-file .material-file-icon {
+  width: 1.5rem;
+  height: 1.82rem;
+  border-radius: .18rem;
+  font-size: inherit;
+}
+
+.material-tree-file .material-file-mark {
+  font-size: .39rem;
+}
+
+.material-upload-item .material-file-icon {
+  width: 1.55rem;
+  height: 1.88rem;
+}
+
+
+/* 教材検索欄は外側のコンテナだけに罫線を表示する */
+.material-search input[type="search"],
+.material-search input[type="search"]:hover,
+.material-search input[type="search"]:focus,
+.material-search input[type="search"]:focus-visible {
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+
+/* 入試管理 */
+.admission-main {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.admission-back {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  margin: 0 0 .8rem;
+  padding: .3rem 0;
+  color: var(--muted);
+  font-size: .76rem;
+  text-decoration: none;
+}
+
+.admission-back:hover {
+  color: var(--accent);
+}
+
+.admission-panel {
+  padding: 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: .52rem;
+  background: var(--bg-elevated);
+  box-shadow: var(--card-shadow);
+}
+
+.admission-panel .eyebrow {
+  margin-bottom: .25rem;
+}
+
+.admission-panel h2 {
+  display: flex;
+  align-items: center;
+  gap: .42rem;
+  margin: 0;
+  color: var(--fg);
+  font-size: 1.25rem;
+}
+
+.admission-panel h2 > .bx {
+  color: var(--accent);
+}
+
+.admission-calendar-placeholder {
+  display: grid;
+  min-height: 13rem;
+  place-items: center;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px dashed color-mix(in srgb, var(--accent) 40%, var(--border));
+  border-radius: .44rem;
+  background: color-mix(in srgb, var(--accent) 3%, var(--bg-elevated));
+  color: var(--muted);
+  text-align: center;
+}
+
+.admission-calendar-placeholder i {
+  margin-bottom: .4rem;
+  color: var(--accent);
+  font-size: 2rem;
+}
+
+.admission-calendar-placeholder p {
+  margin: 0;
+  color: var(--fg);
+  font-size: .85rem;
+  font-weight: 600;
+}
+
+.admission-calendar-placeholder small {
+  display: block;
+  margin-top: .25rem;
+  font-size: .7rem;
+}
+
+/* Compact category pills retain the source calendar's color in both themes. */
+.student-heading-actions { display: flex; align-items: center; gap: .35rem; }
+.student-slider { display: flex; gap: .35rem; overflow-x: auto; max-width: 100%; padding: .35rem .1rem .65rem; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.student-slider button { flex: 0 0 auto; min-height: 36px; border: 1px solid var(--border); border-radius: .65rem; background: transparent; color: var(--fg); padding: .35rem .7rem; font-size: .78rem; line-height: 1.45; white-space: nowrap; transition: background-color .15s, border-color .15s; }
+.student-slider button:hover { background: color-mix(in srgb, var(--student-color, var(--accent)) 10%, var(--bg-elevated)); }
+.student-slider button[aria-pressed="true"] { border-color: color-mix(in srgb, var(--student-color, var(--accent)) 60%, var(--border)); background: color-mix(in srgb, var(--student-color, var(--accent)) 15%, var(--bg-elevated)); color: var(--fg); box-shadow: inset 0 -2px 0 var(--student-color, var(--accent)); font-weight: 700; }
+.student-slider button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.student-slider button small { display: block; color: var(--muted); margin-top: .1rem; font-size: .67rem; font-weight: 400; }
+#student-groups { padding-bottom: .55rem; border-bottom: 1px solid var(--border); }
+#student-groups button { display: inline-flex; align-items: center; gap: .4rem; border-color: transparent; border-radius: 999px; background: color-mix(in srgb, var(--student-color) 10%, var(--bg-elevated)); }
+#student-groups button[aria-pressed="true"] { background: color-mix(in srgb, var(--student-color) 21%, var(--bg-elevated)); border-color: color-mix(in srgb, var(--student-color) 50%, var(--border)); box-shadow: none; }
+.student-group-count { font-size: .65rem; opacity: .65; font-variant-numeric: tabular-nums; }
+.student-slider-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .25rem .5rem; margin: .55rem .1rem .1rem; color: var(--muted); font-size: .72rem; }
+.student-slider-heading small { font-size: inherit; }
+@media (prefers-reduced-motion: reduce) { .student-slider button { transition: none; } }
+@media print { .student-slider, .student-slider-heading, .student-heading-actions { display: none !important; } }
+
+#curriculum-filter-form { display: grid; gap: .65rem; }
+#curriculum-filter-form input, #curriculum-filter-form select { width: 100%; min-width: 0; }
+
+/* Record fields grow from one line within stacked cards on every screen size. */
+.record-panel #record-table textarea { box-sizing: border-box; min-height: 0; height: auto; overflow-y: hidden; resize: none; line-height: 1.5; background: var(--bg-elevated); color: var(--fg); border-color: var(--border); box-shadow: none; }
+.record-panel #record-table textarea:focus { background: var(--bg-elevated); border-color: var(--accent); }
+.record-student-memo { margin-top: .8rem; padding-top: .65rem; border-top: 1px solid var(--border); }
+.record-student-memo label { display: block; color: var(--muted); font-size: .72rem; font-weight: 600; }
+.record-student-memo textarea { margin-top: .3rem; font-weight: 400; }
+.curriculum-panel #student-memo { box-sizing: border-box; min-height: 0; overflow-y: hidden; resize: none; line-height: 1.5; }
+.student-memo-feedback { display: flex; align-items: center; flex-wrap: wrap; gap: .35rem .5rem; margin-top: .3rem; }
+.student-memo-status { color: var(--muted); font-size: .68rem; font-weight: 400; white-space: normal; }
+.student-memo-status[data-error="true"] { color: var(--danger, #b91c1c); }
+.student-memo-retry { padding: .15rem .45rem; font-size: .7rem; }
+.student-memo-retry[hidden] { display: none; }
+@media print { .student-memo-feedback { display: none; } }
+@media screen {
+  [data-page-tab-panel="record"], .record-panel, .record-panel .table-scroll { min-width: 0; max-width: 100%; }
+  .record-panel .table-scroll { overflow: visible; padding: 0; border: 0; background: transparent; box-shadow: none; }
+  .record-panel #record-table { display: block; min-width: 0; width: 100%; }
+  .record-panel #record-table thead { display: none; }
+  .record-panel #record-table tbody { display: grid; gap: .85rem; }
+  .record-panel #record-table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .45rem .6rem; min-width: 0; padding: .8rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--bg-elevated); }
+  .record-panel #record-table td { display: block; position: static; width: auto; min-width: 0; padding: 0; border: 0; box-shadow: none; white-space: normal; text-align: left; overflow-wrap: anywhere; }
+  .record-panel #record-table td:first-child { grid-column: 1 / -1; }
+  .record-panel #record-table td:nth-child(2), .record-panel #record-table td:nth-child(3) { color: var(--muted); font-size: .75rem; }
+  .record-panel #record-table td:nth-child(3) { text-align: right; }
+  .record-panel #record-table td:nth-child(n+4) { grid-column: 1 / -1; }
+  .record-panel #record-table td:nth-child(n+4)::before { display: block; content: attr(data-label); margin: .2rem 0 .3rem; color: var(--muted); font-size: .72rem; font-weight: 600; }
+  .record-panel #record-table textarea { width: 100%; min-width: 0; padding: .4rem .5rem; font-size: 16px; }
+  .record-panel .record-student-link { max-width: 100%; min-height: 44px; white-space: normal; text-align: left; overflow-wrap: anywhere; }
+  .record-panel .record-prev-info { margin: .2rem 0 0; }
+  .record-panel .record-prev-info p { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .record-panel .record-day-btn { min-height: 44px; }
+  .record-panel #record-table .record-empty-slot { align-items: center; }
+  .record-panel #record-table .record-empty-slot td:first-child { grid-column: 1; }
+  .record-panel #record-table .record-empty-slot td:nth-child(2) { grid-column: 2; text-align: right; }
+  .record-panel #record-table .record-empty-slot td:last-child { display: none; }
+}
+#curriculum-filter-form .hint { margin: 0 0 .5rem; }
+
+/* Linked plans retain a single curriculum value and show the destination beside the editor. */
+.record-next-plan { margin-top: .8rem; padding-top: .65rem; border-top: 1px solid var(--border); }
+.record-next-plan label { display: block; color: var(--muted); font-size: .72rem; font-weight: 600; }
+.record-next-plan textarea { margin-top: .3rem; font-weight: 400; }
+.lesson-plan-target { display: block; color: var(--muted); font-size: .7rem; margin-top: .35rem; white-space: normal; overflow-wrap: anywhere; }
+.lesson-plan-feedback { display: flex; align-items: center; flex-wrap: wrap; gap: .3rem .5rem; margin-top: .25rem; }
+.lesson-plan-status { color: var(--muted); font-size: .68rem; white-space: normal; }
+.lesson-plan-status[data-error="true"] { color: var(--danger, #b91c1c); }
+.lesson-plan-action { font-size: .68rem; padding: .15rem .45rem; white-space: normal; }
+.lesson-plan-action[hidden], .linked-lesson-plan[hidden] { display: none; }
+@media print { .lesson-plan-feedback { display: none; } }

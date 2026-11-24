@@ -22,14 +22,18 @@ tag = "v2"
 new_sqlite_classes = ["HomesDataStore"]
 
 [[rules]]
-type = "Text"
-globs = ["**/ui/app.html", "**/ui/app.css", "**/ui/app.mjs"]
-fallthrough = true
-
-[[rules]]
 type = "Data"
 globs = ["**/ui/Homes.png"]
 fallthrough = true
+
+# Works-derived ToDo/Memo screens. run_worker_first keeps every file behind the
+# Worker's sign-in check; nothing in public/ is served without a family session.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = true
+html_handling = "auto-trailing-slash"
+not_found_handling = "none"
 
 [[routes]]
 pattern = "homes.lrnr.jp"
