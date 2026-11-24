@@ -1,0 +1,13 @@
+name = "homes-auth"
+main = "worker/index.mjs"
+compatibility_date = "2026-11-23"
+workers_dev = true
+preview_urls = false
+
+[[durable_objects.bindings]]
+name = "AUTH_STORE"
+class_name = "HomesAuthStore"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["HomesAuthStore"]

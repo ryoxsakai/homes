@@ -1,0 +1,7 @@
+{
+  "name": "homes",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test" },
+  "dependencies": { "jose": "6.2.18" }
+}

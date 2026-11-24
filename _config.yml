@@ -1,0 +1,8 @@
+exclude:
+  - worker
+  - test
+  - package.json
+  - package-lock.json
+  - wrangler.toml
+  - node_modules
+  - README.md
