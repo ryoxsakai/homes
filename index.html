@@ -9,23 +9,25 @@
   <meta name="apple-mobile-web-app-title" content="Homes">
   <link rel="apple-touch-icon" sizes="600x600" href="./Homes.png">
   <style>
-    :root {color-scheme:light dark;--bg:#f3f5fa;--panel:#fff;--text:#18233a;--muted:#53617a;--line:#dce2ed;--accent:#425ab0}
-    @media(prefers-color-scheme:dark){:root{--bg:#101725;--panel:#182235;--text:#e9efff;--muted:#b1bed8;--line:#33405a;--accent:#aabaff}}
+    :root {color-scheme:light dark;--bg:#f3f5fa;--panel:#fff;--text:#18233a;--muted:#53617a;--line:#dce2ed;--accent:#425ab0;--button:#425ab0;--button-text:#fff}
+    @media(prefers-color-scheme:dark){:root{--bg:#101725;--panel:#182235;--text:#e9efff;--muted:#b1bed8;--line:#33405a;--accent:#aabaff;--button:#aabaff;--button-text:#18233a}}
     *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:1rem/1.6 system-ui,sans-serif}
     header{background:var(--panel);border-bottom:1px solid var(--line);padding:.85rem max(1.25rem,calc((100% - 48rem)/2));font-weight:700}
     main{max-width:50.5rem;margin:auto;padding:clamp(1.5rem,5vw,3.5rem) 1.25rem}
     section{background:var(--panel);border:1px solid var(--line);border-radius:.85rem;padding:clamp(1.25rem,4vw,2.5rem)}
     h1{margin:0;font-size:clamp(2rem,7vw,3.25rem);line-height:1.15;letter-spacing:-.04em}
-    p{margin:.65rem 0 0;color:var(--muted)}.status{color:var(--accent);font-size:.85rem;font-weight:700;margin:0 0 .5rem}
+    p{margin:.65rem 0 0;color:var(--muted)}
+    .launch{display:inline-flex;align-items:center;min-height:44px;margin-top:1.25rem;padding:.55rem 1rem;border-radius:.55rem;background:var(--button);color:var(--button-text);font-weight:700;text-decoration:none}
+    .launch:hover{text-decoration:underline}.launch:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
   </style>
 </head>
 <body>
   <header>Homes</header>
   <main>
     <section aria-labelledby="heading">
-      <p class="status">準備中</p>
       <h1 id="heading">Homes</h1>
-      <p>家庭用ウェブアプリの準備ページです。</p>
+      <p>許可されたGoogleアカウントでHomesにログインできます。</p>
+      <a class="launch" href="https://homes-auth.ryoxsakai.workers.dev/">Homesを開く</a>
     </section>
   </main>
 </body>
