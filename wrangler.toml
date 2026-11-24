@@ -30,3 +30,7 @@ fallthrough = true
 type = "Data"
 globs = ["**/ui/Homes.png"]
 fallthrough = true
+
+[[routes]]
+pattern = "homes.lrnr.jp"
+custom_domain = true
