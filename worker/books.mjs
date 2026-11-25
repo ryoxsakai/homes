@@ -185,7 +185,7 @@ async function lookupNdlBook(isbn, upstream) {
   try {
     const response = await upstream(url, {
       headers: { Accept: 'application/rss+xml, application/xml, text/xml' },
-      redirect: 'error', signal: AbortSignal.timeout(8000),
+      redirect: 'error', signal: AbortSignal.timeout(18000),
     });
     if (!response.ok) return null;
     const rss = await readNdlRss(response);
