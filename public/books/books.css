@@ -9,10 +9,9 @@
 :where(.books-page) :where(button, input, select, textarea) { font: inherit; color: inherit; }
 
 .books-loading { padding: 40px var(--works-gutter, 24px); color: var(--works-ink-2); }
-.books-main { box-sizing: border-box; max-width: 1200px; padding: 20px var(--works-gutter, 24px) 32px; }
+.books-main { box-sizing: border-box; max-width: 1200px; padding: 16px var(--works-gutter, 24px) 32px; scroll-margin-top: 12px; }
 
 .books-heading { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 16px; }
-.books-heading .eyebrow { margin: 0; color: var(--works-accent); font-size: 11px; font-weight: 700; letter-spacing: .12em; }
 .books-heading h2 { margin: 0; font-size: 20px; line-height: 1.3; }
 .books-summary { margin: 2px 0 0; color: var(--works-ink-2); font-size: 13px; }
 .books-heading-actions { display: flex; gap: 8px; }
@@ -36,12 +35,15 @@
 .books-icon-btn:hover:not(:disabled) { background: var(--works-hover); color: var(--works-ink); }
 .books-icon-btn:disabled { opacity: .35; cursor: default; }
 .books-link-btn { padding: 0; border: 0; background: none; color: var(--works-accent); font-weight: 600; text-decoration: underline; cursor: pointer; }
-.books-save-status { min-height: 1.6em; margin: 4px 0 0; color: var(--works-ink-2); font-size: 13px; }
+.books-save-status { margin: 4px 0 0; color: var(--works-ink-2); font-size: 13px; }
+.books-save-status:empty { margin: 0; }
 
 /* Toolbar */
 .books-toolbar {
-  display: grid; grid-template-columns: auto minmax(200px, 1fr) auto; grid-template-areas: "status search view" "filters filters filters"; gap: 12px;
-  margin-top: 8px; padding: 16px; border-radius: 8px; background: var(--works-surface); box-shadow: var(--works-shadow);
+  display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "status options view"; align-items: start; gap: 8px 12px;
+  margin-top: 10px;
+}
+.books-toolbar:has(.books-display-options[open]) { grid-template-areas: "status . view" "options options options";
 }
 .books-status-tabs, .books-view-toggle { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--works-track); }
 .books-status-tabs button, .books-view-toggle button {
@@ -59,12 +61,33 @@
 .books-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 16px; }
 .books-search:focus-within { box-shadow: var(--works-focus); }
 .books-status-tabs { grid-area: status; }
-.books-search { grid-area: search; }
 .books-view-toggle { grid-area: view; }
-.books-filters { grid-area: filters; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.books-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
 .books-filters label { display: grid; min-width: 150px; }
 /* The select text names the filter ("カテゴリ：すべて"), so the labels are only read aloud. */
 .books-filters label > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.books-display-options {
+  grid-area: options; border: 1px solid var(--works-line); border-radius: 10px;
+  background: var(--works-surface);
+}
+.books-display-options summary {
+  display: flex; align-items: center; gap: 7px; min-height: 42px; padding: 0 10px;
+  color: var(--works-ink-2); font-size: 13px; font-weight: 600; cursor: pointer; list-style: none;
+}
+.books-display-options summary::-webkit-details-marker { display: none; }
+.books-display-options summary::after {
+  content: ""; width: 7px; height: 7px; margin-left: auto; margin-right: 2px; flex: 0 0 auto;
+  border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: rotate(45deg) translateY(-2px);
+}
+.books-display-options[open] summary::after { transform: rotate(225deg) translate(-1px, -1px); }
+.books-filter-count {
+  padding: 0 7px; border-radius: 999px; background: var(--works-accent-soft); color: var(--works-accent-strong);
+  font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+.books-display-fields { display: grid; gap: 8px; padding: 0 10px 10px; }
+.books-filter-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.books-manage-action { min-height: 40px; padding-inline: 10px; font-size: 13px; box-shadow: none; }
+.books-bottom-menu { display: none; }
 .books-page select, .books-field input, .books-field textarea, .books-isbn-row input, .books-manage-add input {
   box-sizing: border-box; min-height: 44px; padding: 8px 10px; border: 1px solid var(--works-input-line); border-radius: 8px;
   background: var(--works-surface); font-size: 16px;
@@ -72,11 +95,11 @@
 .books-page select { padding-right: 24px; }
 .books-filters select:has(option:checked[value=""]) { color: var(--works-ink-2); }
 .books-filters select:not(#sort, :has(option:checked[value=""])) { border-color: var(--works-accent); background: var(--works-accent-soft); }
-.books-result-count { margin: 16px 0 0; color: var(--works-ink-2); font-size: 13px; }
+.books-result-count { margin: 8px 0 0; color: var(--works-ink-2); font-size: 13px; }
 .books-result-count:empty { display: none; }
 
 /* Grid of covers */
-.books-grid, .books-list { margin: 16px 0 0; padding: 0; list-style: none; }
+.books-grid, .books-list { margin: 10px 0 0; padding: 0; list-style: none; }
 .books-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 20px 16px; }
 .books-card {
   display: flex; flex-direction: column; gap: 8px; width: 100%; height: 100%; padding: 0;
@@ -223,11 +246,32 @@
 @media (min-width: 731px) { .books-toast { bottom: 24px; } }
 
 @media (max-width: 730px) {
-  .books-main { padding: 16px 16px 24px; }
-  .books-heading h2 { font-size: 18px; }
-  .books-heading-actions { width: 100%; }
-  .books-heading-actions .books-btn { flex: 1; }
-  .books-toolbar { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "status view" "search search" "filters filters"; gap: 8px; padding: 12px; }
+  .books-main { padding: 10px 16px 76px; }
+  .books-heading h2 { font-size: 17px; }
+  .books-heading-actions { display: none; }
+  .books-toolbar, .books-toolbar:has(.books-display-options[open]) {
+    grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "status view" "options options"; gap: 6px;
+    margin-top: 8px;
+  }
+  .books-bottom-menu {
+    position: fixed; z-index: 35; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom));
+    transform: translateX(-50%); display: flex; width: min(calc(100% - 32px), 352px);
+    padding: 3px 5px; box-sizing: border-box; gap: 4px; border-radius: 16px;
+    background: var(--works-surface); box-shadow: var(--works-shadow-lg);
+  }
+  body.works-shell .books-bottom-menu { bottom: calc(72px + env(safe-area-inset-bottom)); }
+  body:has(.works-navigation[open], dialog[open]) .books-bottom-menu { display: none; }
+  .books-bottom-menu button {
+    position: relative; display: grid; place-items: center; flex: 1 1 0; min-width: 0; min-height: 44px;
+    border: 0; border-radius: 12px; background: transparent; color: var(--works-ink-2); cursor: pointer;
+  }
+  .books-bottom-menu button:is([aria-current="page"], [aria-expanded="true"]) { background: var(--works-ink); color: var(--works-surface); }
+  .books-bottom-menu .books-menu-add { background: var(--works-accent-soft); color: var(--works-accent-strong); }
+  .books-bottom-menu button:focus-visible { outline: 2px solid var(--works-accent); outline-offset: -2px; }
+  .books-menu-dot {
+    position: absolute; left: calc(50% + 8px); top: 8px; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--works-accent); outline: 1px solid var(--works-surface);
+  }
   .books-status-tabs { display: flex; }
   .books-status-tabs button { padding: 0 8px; }
   .books-status-tabs button { flex: 1; }
@@ -240,9 +284,6 @@
   .books-edit { grid-template-columns: 1fr; gap: 12px; }
   .books-edit-cover { grid-template-columns: 96px 1fr; align-items: end; }
   .books-isbn { text-align: left; }
-}
-@media (max-width: 400px) {
-  .books-toolbar { grid-template-areas: "status status" "search view" "filters filters"; }
 }
 @media (max-width: 360px) {
   .books-field-row { grid-template-columns: 1fr; }
