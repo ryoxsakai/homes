@@ -1,14 +1,14 @@
-// Homes 本棚: picture books the family owns or wants, with location, category and tags.
+// Homes 本棚: picture books the family borrows, owns or wants, with location, category and tags.
 // The shelf is one revisioned document saved through the same-origin /api/books.
 import { watchAuth, signOutUser } from '../shared/auth.js?v=14';
 import { normalizeIsbn } from './isbn.mjs';
-import { readBooksPreferences, writeBooksPreferences } from './preferences.mjs';
+import { readBooksPreferences, writeBooksPreferences } from './preferences.mjs?v=borrowed-1';
 import { prepareCoverPhoto } from './cover-photo.mjs';
 import { cameraAvailable, startScanner } from './scanner.mjs?v=1';
 
 const $ = selector => document.querySelector(selector);
 const collator = new Intl.Collator('ja', { numeric: true, sensitivity: 'base' });
-const STATUS_LABEL = { owned: '持っている', wanted: '欲しい' };
+const STATUS_LABEL = { borrowed: '借りた', owned: '持っている', wanted: '欲しい' };
 
 let shelf = { books: [], categories: [], locations: [] };
 let revision = 0;
@@ -148,8 +148,9 @@ document.addEventListener('error', event => {
 }, true);
 
 function render() {
-  const owned = shelf.books.filter(b => b.status === 'owned').length;
-  $('#summary').textContent = `持っている ${owned}冊・欲しい ${shelf.books.length - owned}冊`;
+  const totals = { borrowed: 0, owned: 0, wanted: 0 };
+  for (const { status } of shelf.books) if (Object.hasOwn(totals, status)) totals[status]++;
+  $('#summary').textContent = Object.entries(STATUS_LABEL).map(([status, label]) => `${label} ${totals[status]}冊`).join('・');
   ui.category = fillSelect($('#filter-category'), shelf.categories, ui.category, { name: 'カテゴリ', none: true });
   ui.location = fillSelect($('#filter-location'), shelf.locations, ui.location, { name: '場所', none: true });
   ui.tag = fillSelect($('#filter-tag'), allTags(), ui.tag, { name: 'タグ' });
@@ -165,11 +166,14 @@ function render() {
   const books = visibleBooks();
   const list = $('#book-list');
   list.className = ui.view === 'list' ? 'books-list' : 'books-grid';
-  list.innerHTML = books.map(b => `
+  list.innerHTML = books.map(b => {
+    const badge = b.status === 'borrowed' || b.status === 'wanted'
+      ? `<span class="books-status-badge books-status-${b.status}">${STATUS_LABEL[b.status]}</span>` : '';
+    return `
     <li><button type="button" class="books-card" data-book="${esc(b.id)}">
-      <span class="books-cover">${coverMarkup(b)}${b.status === 'wanted' ? '<span class="books-wanted-badge">欲しい</span>' : ''}</span>
+      <span class="books-cover">${coverMarkup(b)}${ui.view === 'list' ? '' : badge}</span>
       <span class="books-card-text">
-        <span class="books-card-title">${esc(b.title)}</span>
+        <span class="books-card-heading"><span class="books-card-title">${esc(b.title)}</span>${ui.view === 'list' ? badge : ''}</span>
         ${b.authors.length ? `<span class="books-card-author">${esc(b.authors.join('、'))}</span>` : ''}
         <span class="books-card-tags">
           ${b.location ? `<span class="books-chip books-chip-place">${esc(b.location)}</span>` : ''}
@@ -177,7 +181,8 @@ function render() {
           ${b.tags.map(t => `<span class="books-chip books-chip-tag">#${esc(t)}</span>`).join('')}
         </span>
       </span>
-    </button></li>`).join('');
+    </button></li>`;
+  }).join('');
   const filtered = books.length !== shelf.books.length;
   $('#result-count').textContent = filtered ? `${books.length}冊を表示（全${shelf.books.length}冊）` : '';
   $('#empty').hidden = books.length > 0;
@@ -490,7 +495,7 @@ const editor = (() => {
       save('保存しました', photoChange);
     } else {
       shelf.books.push({ id, ...draft, ...fields, createdAt: now, createdBy: null });
-      save(fields.status === 'wanted' ? '欲しい本に追加しました' : '本棚に登録しました', photoChange);
+      save(fields.status === 'wanted' ? '欲しい本に追加しました' : fields.status === 'borrowed' ? '借りた本に追加しました' : '本棚に登録しました', photoChange);
     }
     initial = JSON.stringify(values());
     dialog.close();
