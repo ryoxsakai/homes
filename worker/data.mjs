@@ -1,5 +1,5 @@
 import { MAX_DOCUMENT_BYTES } from './state.mjs';
-import { fetchCover, lookupBook } from './books.mjs';
+import { fetchCover, lookupBook, normalizeTitleQuery, searchBooksByTitle } from './books.mjs';
 import { MAX_PHOTO_BASE64, PHOTO_ID } from './books-photos.mjs';
 import { fetchLegacyCleaning } from './household.mjs';
 
@@ -11,7 +11,7 @@ const jsonBodyType = /^application\/json\s*(?:;\s*charset\s*=\s*(?:"utf-8"|utf-8
 //   GET /api/me
 //   GET|PUT /api/todo, GET /api/todo/clone?request_id=…, POST /api/todo/clone
 //   GET|PUT /api/memo
-//   GET|PUT /api/books, GET /api/books/lookup?isbn=…, GET /api/books/cover?id=…
+//   GET|PUT /api/books, GET /api/books/lookup?isbn=…, GET /api/books/search?title=…, GET /api/books/cover?id=…
 //   GET|PUT /api/grocery, GET|PUT /api/cleaning, GET /api/cleaning/legacy (preview), POST /api/cleaning/import
 const routes = {
   '/api/me': ['GET'],
@@ -20,6 +20,7 @@ const routes = {
   '/api/memo': ['GET', 'PUT'],
   '/api/books': ['GET', 'PUT'],
   '/api/books/lookup': ['GET'],
+  '/api/books/search': ['GET'],
   '/api/books/cover': ['GET'],
   '/api/books/photo': ['GET'],
   '/api/grocery': ['GET', 'PUT'],
@@ -31,6 +32,7 @@ const routes = {
 const queries = {
   '/api/todo/clone': ['request_id', v => CLONE_REQUEST.test(v)],
   '/api/books/lookup': ['isbn', v => /^[0-9Xx -]{10,17}$/.test(v)],
+  '/api/books/search': ['title', normalizeTitleQuery],
   '/api/books/cover': ['id', v => /^[A-Za-z0-9_-]{4,40}$/.test(v)],
   '/api/books/photo': ['id', v => PHOTO_ID.test(v)],
 };
@@ -94,6 +96,10 @@ export async function handleHomesData(request, env, member, respond) {
     const found = await lookupBook(searchParams.get('isbn'), env);
     return found.error ? json(found.error.status, {error: found.error.message,
       ...(found.ndlStatus && { ndlStatus: found.ndlStatus })}) : json(200, found.value);
+  }
+  if (pathname === '/api/books/search') {
+    const found = await searchBooksByTitle(searchParams.get('title'), env);
+    return found.error ? json(found.error.status, {error: found.error.message}) : json(200, found.value);
   }
   if (pathname === '/api/cleaning/legacy') {
     const found = await fetchLegacyCleaning();

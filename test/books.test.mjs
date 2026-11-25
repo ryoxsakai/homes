@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { emptyBooks, explain, fetchCover, isIsbn13, lookupBook, nextBooks, normalizeIsbn, validateBooks } from '../worker/books.mjs';
+import { emptyBooks, explain, fetchCover, isIsbn13, lookupBook, nextBooks, normalizeIsbn, normalizeTitleQuery, searchBooksByTitle, validateBooks } from '../worker/books.mjs';
 import { createApp } from '../worker/auth.mjs';
 
 const book = (over = {}) => ({
@@ -199,4 +199,86 @@ test('provider failure diagnostics disclose only a stable status when both servi
   assert.equal(result.error.status, 503);
   assert.equal(result.ndlStatus, 'http-403');
   assert.ok(!JSON.stringify(result).includes('Do not disclose'));
+});
+
+test('title search ranks exact titles, deduplicates editions and keeps valid ISBN and cover data', async () => {
+  const vol = (id, title, isbn, image) => ({ id, volumeInfo: { title, authors: [' 著者 '], publisher: '社',
+    industryIdentifiers: isbn ? [{ type: 'ISBN_10', identifier: isbn }] : [], ...(image && {imageLinks:{thumbnail:'https://example.test/unused'}}) } });
+  let count = 0;
+  const result = await searchBooksByTitle(' ぐりとぐら ', { GOOGLE_BOOKS_API_KEY: 'key' }, async (url, opts) => {
+    count++;
+    assert.equal(url.origin + url.pathname, 'https://www.googleapis.com/books/v1/volumes');
+    assert.equal(url.searchParams.get('q'), 'intitle:"ぐりとぐら"');
+    assert.equal(opts.headers['X-Goog-Api-Key'], 'key');
+    assert.equal(url.searchParams.has('key'), false);
+    assert.equal(opts.redirect, 'manual');
+    return Response.json({items:[
+      vol('episode01','ぐりとぐらのえんそく'),
+      vol('original1','ぐりとぐら','4-8340-0082-6',true),
+      vol('duplicate','ぐりとぐら','4-8340-0082-6',true),
+      vol('http:spoof','ぐりとぐら その他',null,true),
+      vol('unrelated','別タイトル'),
+      {id:'null_volume'},
+    ]});
+  });
+  assert.equal(count,1);
+  assert.deepEqual(result.value.books.map(b => [b.title,b.isbn,b.volumeId,b.hasCover]),[
+    ['ぐりとぐら','9784834000825','original1',true],['ぐりとぐらのえんそく','','episode01',false],['ぐりとぐら その他','','',false],
+  ]);
+});
+
+test('title search falls back to the NDL catalogue when Books is rate-limited', async () => {
+  const record = (id,title) => `<dcndl:BibResource rdf:about="https://ndlsearch.ndl.go.jp/books/${id}#material">
+    <dcterms:title>${title}</dcterms:title><dc:creator>やなせたかし さく・え</dc:creator>
+    <dcterms:publisher><foaf:Agent><foaf:name>フレーベル館</foaf:name></foaf:Agent></dcterms:publisher>
+    <dcterms:issued>1996.01</dcterms:issued><dcterms:identifier rdf:datatype="http://ndl.go.jp/dcndl/terms/ISBN">4-577-01696-6</dcterms:identifier>
+    </dcndl:BibResource>`;
+  const result = await searchBooksByTitle('アンパンマンとまほう', {GOOGLE_BOOKS_API_KEY:'secret'}, async (url, opts) => {
+    if (url.hostname === 'www.googleapis.com') return Response.json({}, { status: 429 });
+    assert.equal(url.origin + url.pathname, 'https://ndlsearch.ndl.go.jp/api/sru');
+    assert.equal(url.searchParams.get('query'), 'dpid="iss-ndl-opac" AND title="アンパンマンとまほう"');
+    assert.equal(url.searchParams.get('mediatype'), 'books');
+    assert.equal(opts.headers['X-Goog-Api-Key'], undefined);
+    const xml = '<searchRetrieveResponse>' + [
+      record('R100000001-I1','アンパンマンとまほうのふで 非対象機関'),
+      record('R100000002-I2','別の本'),
+      record('R100000002-I3','アンパンマンとまほうのふで'),
+    ].join('') + '</searchRetrieveResponse>';
+    return new Response(xml, {headers:{'Content-Type':'application/xml'}});
+  });
+  assert.deepEqual(result.value.books, [{title:'アンパンマンとまほうのふで',isbn:'9784577016961',
+    authors:['やなせたかし'],publisher:'フレーベル館',publishedDate:'1996-01',volumeId:'',hasCover:false,source:'ndl'}]);
+});
+
+test('title search rejects empty or oversized input and distinguishes misses from provider failure', async () => {
+  assert.equal(normalizeTitleQuery('　"ぐり"＊\\ ?　'), 'ぐり');
+  for (const q of ['', '　', 'a\n', 'a'.repeat(201), '?!!']) {
+    const r = await searchBooksByTitle(q, {}, () => { assert.fail('invalid query reached upstream'); });
+    assert.equal(r.error.status,400);
+  }
+  const empty = await searchBooksByTitle('ミッケ', {}, async url => url.hostname === 'www.googleapis.com'
+    ? Response.json({items:[]}) : new Response('<searchRetrieveResponse><numberOfRecords>0</numberOfRecords></searchRetrieveResponse>',
+      {headers:{'Content-Type':'application/xml'}}));
+  assert.deepEqual(empty.value,{books:[]});
+  const unavailable = await searchBooksByTitle('ミッケ', {}, async () => new Response('secret', {status:503}));
+  assert.equal(unavailable.error.status,503);
+  assert.ok(!JSON.stringify(unavailable).includes('secret'));
+});
+
+test('title search route is private, same origin, no-store and does not access the shelf', async () => {
+  const f = fixture();
+  const params = '?title=' + encodeURIComponent('ぐりとぐら');
+  assert.equal((await f.call('/api/books/search' + params, {headers:{Cookie:''}})).status,401);
+  for (const query of ['', '?title=', params + '&title=x', params + '&isbn=x', '?title='+ 'a'.repeat(201)])
+    assert.equal((await f.call('/api/books/search' + query)).status,400);
+  assert.equal((await f.call('/api/books/search' + params, {headers:{'Sec-Fetch-Site':'cross-site'}})).status,403);
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => Response.json({items:[{id:'gurigura1',volumeInfo:{title:'ぐりとぐら'}}]});
+  try {
+    const r = await f.call('/api/books/search' + params, {headers:{'Sec-Fetch-Site':'same-origin'}});
+    assert.equal(r.status,200);
+    assert.equal(r.headers.get('Cache-Control'),'no-store');
+    assert.equal((await r.json()).books[0].title,'ぐりとぐら');
+    assert.deepEqual(f.calls,[]);
+  } finally { globalThis.fetch = realFetch; }
 });

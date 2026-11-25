@@ -189,7 +189,16 @@
 .books-isbn-form label { color: var(--works-ink-2); font-size: 12px; font-weight: 600; }
 .books-isbn-row { display: flex; gap: 8px; }
 .books-isbn-row input { flex: 1; min-width: 0; letter-spacing: .04em; }
-#manual-entry { margin-top: 16px; }
+#manual-entry { margin-top: 12px; min-height: 44px; }
+.books-registration-switch { display: flex; width: 100%; box-sizing: border-box; }
+.books-registration-switch button { flex: 1; min-height: 44px; white-space: normal; }
+#title-search-form { grid-template-columns: minmax(0, 1fr); margin-top: 12px; padding-top: 0; border-top: 0; }
+#title-search-status:empty { display: none; }
+.books-title-results { list-style: none; display: grid; gap: 6px; padding: 0; margin: 8px 0 0; }
+.books-title-result { width: 100%; min-width: 0; justify-content: start; text-align: left; padding: 8px 12px; }
+.books-title-result > span { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.books-title-result small { color: var(--works-ink-2); font-weight: 400; }
+.books-title-result:focus-visible { outline: 2px solid var(--works-accent); outline-offset: 2px; }
 
 /* Edit form */
 .books-edit { display: grid; grid-template-columns: 160px 1fr; gap: 20px; }

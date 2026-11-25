@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="/shared/works-design.css?v=4">
   <link rel="stylesheet" href="/shared/works-dialogs.css?v=fb98327c">
   <link rel="stylesheet" href="/shared/homes-theme.css?v=1">
-  <link rel="stylesheet" href="/books/books.css?v=cover-search-1">
+  <link rel="stylesheet" href="/books/books.css?v=title-search-1">
 </head>
 <body class="books-page">
   <header class="page-header works-header">
@@ -120,7 +120,7 @@
     </nav>
   </main>
 
-  <!-- 本を登録：バーコード読み取り / ISBN入力 -->
+  <!-- 本を登録：タイトル検索 / バーコード読み取り・ISBN入力 -->
   <dialog id="add-dialog" class="books-dialog" aria-labelledby="add-title">
     <div class="books-dialog-head">
       <h3 id="add-title">本を登録</h3>
@@ -129,6 +129,22 @@
       </button>
     </div>
     <div class="books-dialog-body">
+      <div class="books-registration-switch books-status-tabs" role="group" aria-label="本の探し方">
+        <button type="button" data-registration-mode="title" aria-controls="registration-title" aria-pressed="true">タイトル</button>
+        <button type="button" data-registration-mode="isbn" aria-controls="registration-isbn" aria-pressed="false">ISBN・バーコード</button>
+      </div>
+      <section id="registration-title" aria-label="タイトルで検索">
+        <form id="title-search-form" class="books-isbn-form">
+          <label for="title-search-input">本のタイトル</label>
+          <div class="books-isbn-row">
+            <input id="title-search-input" type="search" enterkeyhint="search" autocomplete="off" placeholder="例：ぐりとぐら" maxlength="200" required>
+            <button class="books-btn books-btn-primary" type="submit">検索</button>
+          </div>
+        </form>
+        <p id="title-search-status" class="books-scan-message" role="status"></p>
+        <ul id="title-search-results" class="books-title-results" aria-label="タイトル検索の候補" hidden></ul>
+      </section>
+      <section id="registration-isbn" aria-label="ISBN・バーコードで検索" hidden>
       <div class="books-scanner" id="scanner" hidden>
         <video id="scanner-video" muted playsinline></video>
         <div class="books-scanner-guide" aria-hidden="true"><span></span></div>
@@ -145,7 +161,8 @@
           <button class="books-btn" type="submit">検索</button>
         </div>
       </form>
-      <button id="manual-entry" class="books-link-btn" type="button">ISBNがない本を手入力で登録</button>
+      </section>
+      <button id="manual-entry" class="books-link-btn" type="button">手入力で登録</button>
     </div>
   </dialog>
 
@@ -237,6 +254,6 @@
 
   <div id="toast" class="books-toast" role="status" aria-live="polite" hidden></div>
 
-  <script type="module" src="/shared/service-entry.mjs?v=6" data-service-app="/books/app.mjs?v=cover-search-1"></script>
+  <script type="module" src="/shared/service-entry.mjs?v=6" data-service-app="/books/app.mjs?v=title-search-1"></script>
 </body>
 </html>

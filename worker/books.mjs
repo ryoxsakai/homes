@@ -66,10 +66,10 @@ export function nextBooks(current, input, actor) {
   return state;
 }
 
-const lookupURL = isbn => {
+const googleBooksURL = (q, maxResults) => {
   const url = new URL('https://www.googleapis.com/books/v1/volumes');
   url.search = new URLSearchParams({
-    q: 'isbn:' + isbn, maxResults: '5', printType: 'books',
+    q, maxResults, printType: 'books',
     // Without a country, server-side calls can be refused as "location unknown".
     country: 'JP',
     fields: 'items(id,volumeInfo(title,subtitle,authors,publisher,publishedDate,imageLinks/thumbnail,industryIdentifiers))',
@@ -119,16 +119,16 @@ export async function lookupBook(rawIsbn, env, upstream = fetch) {
   return google.error ? { ...google, ndlStatus: ndl.status } : google;
 }
 
-async function lookupGoogleBook(isbn, env, upstream) {
+async function fetchGoogleBooks(url, env, upstream, cache = false) {
   const key = typeof env.GOOGLE_BOOKS_API_KEY === 'string' ? env.GOOGLE_BOOKS_API_KEY.trim() : '';
   let response;
   try {
-    response = await upstream(lookupURL(isbn), {
+    response = await upstream(url, {
       // The key travels in a header, so it is not part of the URL, the edge cache key or logs.
       headers: { Accept: 'application/json', ...(key && { 'X-Goog-Api-Key': key }) },
-      signal: AbortSignal.timeout(5000),
+      redirect: 'manual', signal: AbortSignal.timeout(5000),
       // Cache successful answers only; a refusal must not stick after the key is fixed.
-      cf: { cacheEverything: true, cacheTtlByStatus: { '200-299': 86400, '300-599': 0 } },
+      ...(cache && { cf: { cacheEverything: true, cacheTtlByStatus: { '200-299': 86400, '300-599': 0 } } }),
     });
   } catch {
     return { error: { status: 503, message: 'Google Booksに接続できませんでした' } };
@@ -140,22 +140,67 @@ async function lookupGoogleBook(isbn, env, upstream) {
   }
   let data;
   try { data = await response.json(); } catch { return { error: { status: 503, message: 'Google Booksの応答を読めませんでした' } }; }
-  const items = Array.isArray(data?.items) ? data.items : [];
-  // Prefer the volume that really carries this ISBN; full-text matches can be other books.
-  const item = items.find(i => i?.volumeInfo?.industryIdentifiers?.some?.(x => normalizeIsbn(String(x?.identifier ?? '')) === isbn));
+  return { items: Array.isArray(data?.items) ? data.items : [] };
+}
+
+function googleMetadata(item) {
   const info = item?.volumeInfo;
-  if (!info || !clip(info.title, 300)) return { value: { found: false, isbn } };
+  if (!clip(info?.title, 300)) return null;
   const title = [clip(info.title, 300), clip(info.subtitle, 200)].filter(Boolean).join(' ').slice(0, 300);
-  return {
-    value: {
-      found: true, isbn, title,
-      authors: Array.isArray(info.authors) ? info.authors.map(a => clip(a, 200)).filter(Boolean).slice(0, 20) : [],
-      publisher: clip(info.publisher, 200),
-      publishedDate: clip(info.publishedDate, 20),
-      volumeId: VOLUME_ID.test(item.id) ? item.id : '',
-      hasCover: VOLUME_ID.test(item.id) && typeof info.imageLinks?.thumbnail === 'string',
-    },
+  const volumeId = typeof item.id === 'string' && VOLUME_ID.test(item.id) ? item.id : '';
+  const identifiers = Array.isArray(info.industryIdentifiers) ? info.industryIdentifiers : [];
+  const isbn = identifiers.filter(x => /^ISBN_(10|13)$/.test(x?.type))
+    .map(x => normalizeIsbn(String(x?.identifier ?? ''))).find(Boolean) || '';
+  return { isbn, title, volumeId,
+    authors: Array.isArray(info.authors) ? info.authors.map(a => clip(a, 200)).filter(Boolean).slice(0, 20) : [],
+    publisher: clip(info.publisher, 200), publishedDate: clip(info.publishedDate, 20),
+    hasCover: !!volumeId && typeof info.imageLinks?.thumbnail === 'string',
   };
+}
+
+async function lookupGoogleBook(isbn, env, upstream) {
+  const response = await fetchGoogleBooks(googleBooksURL('isbn:' + isbn, '5'), env, upstream, true);
+  if (response.error) return response;
+  // Prefer the volume that really carries this ISBN; full-text matches can be other books.
+  const item = response.items.find(i => Array.isArray(i?.volumeInfo?.industryIdentifiers) &&
+    i.volumeInfo.industryIdentifiers.some(x => normalizeIsbn(String(x?.identifier ?? '')) === isbn));
+  const metadata = googleMetadata(item);
+  return { value: metadata ? { ...metadata, found: true, isbn } : { found: false, isbn } };
+}
+
+const titleKey = s => s.normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+export function normalizeTitleQuery(value) {
+  if (typeof value !== 'string' || value.length > 200 || /[\p{Cc}\p{Cs}]/u.test(value)) return '';
+  const text = value.normalize('NFKC').replace(/["\\*?^]/g, ' ').replace(/\s+/g, ' ').trim();
+  return text.length <= 200 && titleKey(text) ? text : '';
+}
+
+function titleCandidates(items, query) {
+  const q = titleKey(query);
+  const itemsByRelevance = items.flatMap(book => {
+    const title = book && titleKey(book.title);
+    return title && title.includes(q) ? [{book, rank: title === q ? 0 : title.startsWith(q) ? 1 : 2}] : [];
+  }).sort((a, b) => a.rank - b.rank);
+  const seen = new Set(), results = [];
+  for (const {book} of itemsByRelevance) {
+    const key = book.isbn || book.volumeId || JSON.stringify([book.title, book.authors, book.publisher, book.publishedDate]);
+    if (seen.has(key)) continue;
+    seen.add(key); results.push(book);
+    if (results.length === 8) break;
+  }
+  return results;
+}
+
+export async function searchBooksByTitle(rawTitle, env, upstream = fetch) {
+  const query = normalizeTitleQuery(rawTitle);
+  if (!query) return { error: { status: 400, message: '本のタイトルを確認してください' } };
+  const google = await fetchGoogleBooks(googleBooksURL('intitle:"' + query + '"', '12'), env, upstream);
+  const books = titleCandidates((google.items ?? []).map(googleMetadata), query);
+  if (books.length) return { value: { books } };
+  const ndl = await fetchNdlBooks('title="' + query + '"', upstream, true);
+  if (ndl.books) return { value: { books: titleCandidates(ndl.books, query) } };
+  if (!google.error) return { value: { books: [], incomplete: true } };
+  return { error: { status: 503, message: '書誌情報を検索できませんでした。時間をおくか、手入力で登録してください' } };
 }
 
 // NDL Search SRU, using only NDL's own catalogue. Accept an
@@ -186,28 +231,30 @@ async function readNdlXml(response) {
   } finally { reader.releaseLock(); }
 }
 
-async function lookupNdlBook(isbn, upstream) {
+async function fetchNdlBooks(filter, upstream, byTitle = false) {
   const url = new URL('https://ndlsearch.ndl.go.jp/api/sru');
   url.search = new URLSearchParams({
-    operation: 'searchRetrieve', version: '1.2', maximumRecords: '3',
+    operation: 'searchRetrieve', version: '1.2', maximumRecords: byTitle ? '12' : '3',
     recordSchema: 'dcndl', recordPacking: 'xml', onlyBib: 'true',
-    query: 'dpid="iss-ndl-opac" AND isbn="' + isbn + '"',
+    ...(byTitle && { mediatype: 'books' }),
+    query: 'dpid="iss-ndl-opac" AND ' + filter,
   });
   try {
     const response = await upstream(url, {
       headers: { Accept: 'application/xml, text/xml' },
-      redirect: 'manual', signal: AbortSignal.timeout(18000),
+      redirect: 'manual', signal: AbortSignal.timeout(byTitle ? 12000 : 18000),
     });
     if (!response.ok) return { status: 'http-' + response.status };
     const xml = await readNdlXml(response);
     if (!/<searchRetrieveResponse[\s>]/.test(xml) || /<!DOCTYPE|<!ENTITY|<diagnostics[\s>]/i.test(xml)) return { status: 'invalid-response' };
+    const books = [], allIsbns = [];
     for (const [, attributes, record] of xml.replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, '')
       .matchAll(/<dcndl:BibResource\b([^>]*)>([\s\S]*?)<\/dcndl:BibResource>/g)) {
       const link = xmlText(attributes.match(/\brdf:about="([^"]+)"/)?.[1] ?? '');
       if (!NDL_RECORD.test(link)) continue;
-      const ids = [...record.matchAll(/<dcterms:identifier\b([^>]*)>([^<]*)<\/dcterms:identifier>/g)];
-      if (!ids.some(([, attrs, id]) => /\brdf:datatype="http:\/\/ndl\.go\.jp\/dcndl\/terms\/ISBN(?:13)?"/.test(attrs) &&
-          normalizeIsbn(xmlText(id)) === isbn)) continue;
+      const isbns = [...record.matchAll(/<dcterms:identifier\b([^>]*)>([^<]*)<\/dcterms:identifier>/g)]
+        .filter(([, attrs]) => /\brdf:datatype="http:\/\/ndl\.go\.jp\/dcndl\/terms\/ISBN(?:13)?"/.test(attrs))
+        .map(([, , id]) => normalizeIsbn(xmlText(id))).filter(Boolean);
       const read = (tag, size, origin = record) => clip(xmlText(origin.match(new RegExp('<' + tag + '(?:\\s[^>]*)?>([^<]*)</' + tag + '>'))?.[1] ?? ''), size);
       const title = read('dcterms:title', 300) || read('dc:title', 300);
       if (!title) continue;
@@ -215,14 +262,22 @@ async function lookupNdlBook(isbn, upstream) {
         .map(([, s]) => clip(xmlText(s).replace(/\s+(?:さく・え|作・絵|著|絵|作)$/, ''), 200)).filter(Boolean).slice(0, 20);
       const publishers = record.match(/<dcterms:publisher\b[^>]*>([\s\S]*?)<\/dcterms:publisher>/)?.[1] ?? '';
       const date = read('dcterms:issued', 20) || read('dcterms:date', 20);
-      return { value: { found: true, isbn, title, authors,
+      allIsbns.push(isbns);
+      books.push({ isbn: isbns[0] || '', title, authors,
         publisher: read('foaf:name', 200, publishers) || read('dc:publisher', 200),
-        publishedDate: date.replace(/\./g, '-'), volumeId: '', hasCover: false, source: 'ndl' } };
+        publishedDate: date.replace(/\./g, '-'), volumeId: '', hasCover: false, source: 'ndl' });
     }
-    return { status: 'no-exact-match' };
+    return { books, allIsbns };
   } catch (error) {
     return { status: ['TimeoutError', 'AbortError'].includes(error?.name) ? 'timeout' : 'request-failed' };
   }
+}
+
+async function lookupNdlBook(isbn, upstream) {
+  const ndl = await fetchNdlBooks('isbn="' + isbn + '"', upstream);
+  if (!ndl.books) return { status: ndl.status };
+  const idx = ndl.allIsbns.findIndex(ids => ids.includes(isbn));
+  return idx < 0 ? { status: 'no-exact-match' } : { value: { ...ndl.books[idx], found: true, isbn } };
 }
 
 const MAX_COVER_BYTES = 1_000_000;
