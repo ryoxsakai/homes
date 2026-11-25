@@ -60,17 +60,45 @@ export function nextBooks(current, input, actor) {
   return state;
 }
 
-const lookupURL = (isbn, key) => {
+const lookupURL = isbn => {
   const url = new URL('https://www.googleapis.com/books/v1/volumes');
   url.search = new URLSearchParams({
     q: 'isbn:' + isbn, maxResults: '5', printType: 'books',
     // Without a country, server-side calls can be refused as "location unknown".
     country: 'JP',
     fields: 'items(id,volumeInfo(title,subtitle,authors,publisher,publishedDate,imageLinks/thumbnail,industryIdentifiers))',
-    ...(key && { key }),
   });
   return url;
 };
+
+// Google's error body names the cause (ErrorInfo.reason or errors[].reason).
+async function googleReason(response) {
+  try {
+    const { error } = await response.json();
+    const info = error?.details?.find?.(d => d?.reason)?.reason || '';
+    const legacy = error?.errors?.[0]?.reason || '';
+    return { code: String(info || legacy || error?.status || ''), message: String(error?.message || '') };
+  } catch {
+    return { code: '', message: '' };
+  }
+}
+
+// Family-facing explanation of why Google refused, with what to check.
+export function explain(status, { code, message }, hasKey) {
+  const text = `${code} ${message}`;
+  if (/API_KEY_INVALID|keyInvalid|API key not valid/i.test(text))
+    return 'Google BooksのAPIキーが無効です。Workerのシークレット GOOGLE_BOOKS_API_KEY の値を確認してください';
+  if (/SERVICE_DISABLED|accessNotConfigured|has not been used|is disabled/i.test(text))
+    return 'APIキーのプロジェクトでBooks APIが有効になっていません。Google CloudでBooks APIを有効にしてください（反映まで数分かかります）';
+  if (/API_KEY_.*_BLOCKED|blocked/i.test(text))
+    return 'APIキーの制限で拒否されました。Google Cloudでキーの「アプリケーションの制限」を「なし」、「APIの制限」をBooks APIにしてください';
+  if (/location/i.test(text)) return 'Google Booksが地域を判定できず拒否しました。時間をおいて試すか、手入力してください';
+  if (status === 429 || /RATE_LIMIT|rateLimitExceeded|quota/i.test(text))
+    return hasKey
+      ? 'Google Booksの利用上限に達しました。時間をおくか手入力してください'
+      : 'Google Booksの利用上限に達しました。WorkerにAPIキー（GOOGLE_BOOKS_API_KEY）が設定されていません';
+  return `Google Booksで検索できませんでした（${status}${code ? ` ${code}` : ''}）`;
+}
 
 const clip = (v, max) => typeof v === 'string' ? v.trim().slice(0, max) : '';
 
@@ -78,18 +106,23 @@ const clip = (v, max) => typeof v === 'string' ? v.trim().slice(0, max) : '';
 export async function lookupBook(rawIsbn, env, upstream = fetch) {
   const isbn = normalizeIsbn(rawIsbn);
   if (!isbn) return { error: { status: 400, message: 'ISBNを確認してください' } };
+  const key = typeof env.GOOGLE_BOOKS_API_KEY === 'string' ? env.GOOGLE_BOOKS_API_KEY.trim() : '';
   let response;
   try {
-    response = await upstream(lookupURL(isbn, env.GOOGLE_BOOKS_API_KEY), {
-      headers: { Accept: 'application/json' },
-      cf: { cacheTtl: 86400, cacheEverything: true },
+    response = await upstream(lookupURL(isbn), {
+      // The key travels in a header, so it is not part of the URL, the edge cache key or logs.
+      headers: { Accept: 'application/json', ...(key && { 'X-Goog-Api-Key': key }) },
+      // Cache successful answers only; a refusal must not stick after the key is fixed.
+      cf: { cacheEverything: true, cacheTtlByStatus: { '200-299': 86400, '300-599': 0 } },
     });
   } catch {
     return { error: { status: 503, message: 'Google Booksに接続できませんでした' } };
   }
-  if (response.status === 429 || response.status === 403)
-    return { error: { status: 503, message: 'Google Booksの利用上限に達しました。時間をおくか手入力してください' } };
-  if (!response.ok) return { error: { status: 503, message: 'Google Booksで検索できませんでした' } };
+  if (!response.ok) {
+    const reason = await googleReason(response);
+    console.error('Google Books lookup failed', response.status, reason.code, key ? 'with key' : 'without key');
+    return { error: { status: 503, message: explain(response.status, reason, !!key) } };
+  }
   let data;
   try { data = await response.json(); } catch { return { error: { status: 503, message: 'Google Booksの応答を読めませんでした' } }; }
   const items = Array.isArray(data?.items) ? data.items : [];

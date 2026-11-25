@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { emptyBooks, fetchCover, isIsbn13, lookupBook, nextBooks, normalizeIsbn, validateBooks } from '../worker/books.mjs';
+import { emptyBooks, explain, fetchCover, isIsbn13, lookupBook, nextBooks, normalizeIsbn, validateBooks } from '../worker/books.mjs';
 import { createApp } from '../worker/auth.mjs';
 
 const book = (over = {}) => ({
@@ -44,9 +44,10 @@ test('the server records who registered a book and enforces the revision', () =>
 });
 
 test('Google Books lookup picks the volume with this ISBN and trims its fields', async () => {
-  let requested;
-  const upstream = async url => {
+  let requested, init;
+  const upstream = async (url, options) => {
     requested = new URL(url);
+    init = options;
     return Response.json({ items: [
       { id: 'other999', volumeInfo: { title: '別の本', industryIdentifiers: [{ type: 'ISBN_13', identifier: '9780000000002' }] } },
       { id: 'gurigura1', volumeInfo: { title: 'ぐりとぐら', subtitle: '', authors: ['なかがわりえこ'], publisher: '福音館書店',
@@ -59,11 +60,23 @@ test('Google Books lookup picks the volume with this ISBN and trims its fields',
     publisher: '福音館書店', publishedDate: '1967', volumeId: 'gurigura1', hasCover: true });
   assert.equal(requested.origin + requested.pathname, 'https://www.googleapis.com/books/v1/volumes');
   assert.equal(requested.searchParams.get('q'), 'isbn:9784834000825');
-  assert.equal(requested.searchParams.get('key'), 'k');
+  // The key goes in a header: never in the URL, which is also the edge cache key.
+  assert.equal(requested.searchParams.has('key'), false);
+  assert.equal(init.headers['X-Goog-Api-Key'], 'k');
+  assert.deepEqual(init.cf.cacheTtlByStatus, { '200-299': 86400, '300-599': 0 });
   assert.equal(requested.searchParams.get('country'), 'JP');
 
   assert.deepEqual((await lookupBook('9784834000825', {}, async () => Response.json({}))).value, { found: false, isbn: '9784834000825' });
   assert.equal((await lookupBook('9784834000825', {}, async () => new Response('', { status: 429 }))).error.status, 503);
+  const google = (status, reason, message) => async () => Response.json({ error: { code: status, message,
+    errors: [{ reason: 'x' }], details: [{ '@type': 'type.googleapis.com/google.rpc.ErrorInfo', reason }] } }, { status });
+  const said = async (env, reply) => (await lookupBook('9784834000825', env, reply)).error.message;
+  assert.match(await said({ GOOGLE_BOOKS_API_KEY: 'bad' }, google(400, 'API_KEY_INVALID', 'API key not valid. Please pass a valid API key.')), /APIキーが無効/);
+  assert.match(await said({ GOOGLE_BOOKS_API_KEY: 'k' }, google(403, 'SERVICE_DISABLED', 'Books API has not been used in project 1 before or it is disabled.')), /Books APIが有効になっていません/);
+  assert.match(await said({ GOOGLE_BOOKS_API_KEY: 'k' }, google(403, 'API_KEY_HTTP_REFERRER_BLOCKED', 'Requests from referer <empty> are blocked.')), /キーの制限/);
+  assert.match(await said({}, google(429, 'RATE_LIMIT_EXCEEDED', 'Quota exceeded')), /APIキー（GOOGLE_BOOKS_API_KEY）が設定されていません/);
+  assert.match(await said({ GOOGLE_BOOKS_API_KEY: 'k' }, google(429, 'RATE_LIMIT_EXCEEDED', 'Quota exceeded')), /^Google Booksの利用上限に達しました。時間をおく/);
+  assert.match(explain(500, { code: '', message: '' }, true), /（500）/);
   assert.equal((await lookupBook('9784834000825', {}, async () => { throw Error('offline'); })).error.status, 503);
   assert.equal((await lookupBook('12345', {})).error.status, 400);
 });
