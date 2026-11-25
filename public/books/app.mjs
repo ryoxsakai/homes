@@ -2,10 +2,10 @@
 // The shelf is one revisioned document saved through the same-origin /api/books.
 import { watchAuth, signOutUser } from '../shared/auth.js?v=14';
 import { normalizeIsbn } from './isbn.mjs';
+import { readBooksPreferences, writeBooksPreferences } from './preferences.mjs';
 import { cameraAvailable, startScanner } from './scanner.mjs?v=1';
 
 const $ = selector => document.querySelector(selector);
-const PREFS_KEY = 'homes-books-view';
 const collator = new Intl.Collator('ja', { numeric: true, sensitivity: 'base' });
 const STATUS_LABEL = { owned: '持っている', wanted: '欲しい' };
 
@@ -14,16 +14,13 @@ let revision = 0;
 let saveQueue = Promise.resolve();
 let pending = 0;
 let broken = false;
-const ui = { status: 'all', query: '', category: '', location: '', tag: '', sort: 'added-desc', view: 'grid' };
+const ui = readBooksPreferences(localStorageSafe());
+const displayOptions = $('#books-display-options');
+displayOptions.open = ui.filtersOpen;
+$('#search').value = ui.query;
 
-try { Object.assign(ui, pick(JSON.parse(localStorage.getItem(PREFS_KEY) || '{}'))); } catch {}
-function pick(saved) {
-  const out = {};
-  if (['added-desc', 'added-asc', 'title', 'author', 'published-desc', 'published-asc', 'location', 'category'].includes(saved.sort)) out.sort = saved.sort;
-  if (['grid', 'list'].includes(saved.view)) out.view = saved.view;
-  return out;
-}
-const rememberPrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ sort: ui.sort, view: ui.view })); } catch {} };
+function localStorageSafe() { try { return window.localStorage; } catch { return null; } }
+const rememberPrefs = () => writeBooksPreferences(localStorageSafe(), ui);
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const coverURL = book => book.hasCover && book.volumeId ? `/api/books/cover?id=${encodeURIComponent(book.volumeId)}` : '';
@@ -146,6 +143,11 @@ function render() {
   ui.location = fillSelect($('#filter-location'), shelf.locations, ui.location, { name: '場所', none: true });
   ui.tag = fillSelect($('#filter-tag'), allTags(), ui.tag, { name: 'タグ' });
   $('#sort').value = ui.sort;
+  const count = [ui.query.trim(), ui.category, ui.location, ui.tag].filter(Boolean).length;
+  $('#books-active-filters').textContent = count ? `${count}件` : '';
+  $('#books-active-filters').hidden = count === 0;
+  $('#books-menu-filter-dot').hidden = count === 0;
+  $('#books-reset-filters').hidden = count === 0 && ui.status === 'all';
   for (const b of document.querySelectorAll('[data-status]')) b.setAttribute('aria-pressed', String(b.dataset.status === ui.status));
   for (const b of document.querySelectorAll('[data-view]')) b.setAttribute('aria-pressed', String(b.dataset.view === ui.view));
 
@@ -507,13 +509,40 @@ $('#book-list').addEventListener('error', event => {
     event.target.replaceWith(span);
   }
 }, true);
-for (const button of document.querySelectorAll('[data-status]')) button.addEventListener('click', () => { ui.status = button.dataset.status; render(); });
-for (const button of document.querySelectorAll('[data-view]')) button.addEventListener('click', () => { ui.view = button.dataset.view; rememberPrefs(); render(); });
-$('#search').addEventListener('input', event => { ui.query = event.target.value; render(); });
-$('#filter-category').addEventListener('change', event => { ui.category = event.target.value; render(); });
-$('#filter-location').addEventListener('change', event => { ui.location = event.target.value; render(); });
-$('#filter-tag').addEventListener('change', event => { ui.tag = event.target.value; render(); });
-$('#sort').addEventListener('change', event => { ui.sort = event.target.value; rememberPrefs(); render(); });
+const updateView = (patch) => {
+  Object.assign(ui, patch);
+  render();
+  rememberPrefs();
+};
+for (const button of document.querySelectorAll('[data-status]')) button.addEventListener('click', () => updateView({ status: button.dataset.status }));
+for (const button of document.querySelectorAll('[data-view]')) button.addEventListener('click', () => updateView({ view: button.dataset.view }));
+for (const [selector, prop, eventType] of [
+  ['#search', 'query', 'input'], ['#filter-category', 'category', 'change'],
+  ['#filter-location', 'location', 'change'], ['#filter-tag', 'tag', 'change'],
+  ['#sort', 'sort', 'change'],
+]) $(selector).addEventListener(eventType, event => updateView({ [prop]: event.target.value }));
+const syncOptions = () => {
+  ui.filtersOpen = displayOptions.open;
+  $('#books-menu-filter').setAttribute('aria-expanded', String(ui.filtersOpen));
+  if (ui.filtersOpen) $('#books-menu-list').removeAttribute('aria-current');
+  else $('#books-menu-list').setAttribute('aria-current', 'page');
+};
+syncOptions();
+displayOptions.addEventListener('toggle', () => { syncOptions(); rememberPrefs(); });
+$('#books-menu-list').addEventListener('click', () => {
+  displayOptions.open = false;
+  $('#books-main').scrollIntoView({ block: 'start' });
+});
+$('#books-menu-filter').addEventListener('click', () => {
+  displayOptions.open = !displayOptions.open;
+  if (displayOptions.open) displayOptions.scrollIntoView({ block: 'nearest' });
+});
+$('#books-menu-add').addEventListener('click', openAdd);
+$('#books-reset-filters').addEventListener('click', () => {
+  $('#search').value = '';
+  updateView({ status: 'all', query: '', category: '', location: '', tag: '' });
+  displayOptions.querySelector('summary').focus();
+});
 $('#sign-out').addEventListener('click', async () => {
   if (!confirm('ログアウトしますか？')) return;
   await signOutUser();
@@ -529,6 +558,7 @@ watchAuth({
       $('#books-main').hidden = false;
       $('#user-bar').hidden = false;
       render();
+      rememberPrefs();
     } catch (error) {
       $('#loading').textContent = `本棚を読み込めませんでした（${error.message}）。再読み込みしてください。`;
     }
