@@ -179,3 +179,12 @@ test('Books lookup does not silently use a different Google ISBN or a third-part
     { headers: { 'Content-Type': 'application/rss+xml' } }));
   assert.deepEqual(result.value, { found: false, isbn });
 });
+
+test('provider failure diagnostics disclose only a stable status when both services fail', async () => {
+  const result = await lookupBook('9784577016961', {}, async url => url.hostname === 'www.googleapis.com'
+    ? Response.json({}, { status: 429 })
+    : new Response('Do not disclose upstream body', { status: 403 }));
+  assert.equal(result.error.status, 503);
+  assert.equal(result.ndlStatus, 'http-403');
+  assert.ok(!JSON.stringify(result).includes('Do not disclose'));
+});
