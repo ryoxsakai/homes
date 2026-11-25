@@ -359,6 +359,21 @@ const editor = (() => {
     renderTags();
   }
 
+  const coverSearch = $('#cover-image-search');
+  function updateCoverSearch() {
+    const title = form.title.value.trim();
+    if (title) {
+      const url = new URL('https://www.google.com/search');
+      url.searchParams.set('tbm', 'isch');
+      url.searchParams.set('q', title + ' 表紙');
+      coverSearch.href = url.href;
+    } else {
+      coverSearch.removeAttribute('href');
+    }
+    coverSearch.hidden = !title;
+  }
+  form.title.addEventListener('input', updateCoverSearch);
+
   function open(book, found = {}) {
     current = book;
     draft = book ? null : {
@@ -371,6 +386,7 @@ const editor = (() => {
     $('#delete-book').hidden = !book;
     form.status.value = book?.status || 'owned';
     form.title.value = src.title;
+    updateCoverSearch();
     form.authors.value = src.authors.join('、');
     form.publisher.value = src.publisher;
     form.publishedDate.value = src.publishedDate;
