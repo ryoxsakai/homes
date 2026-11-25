@@ -158,9 +158,9 @@ async function lookupGoogleBook(isbn, env, upstream) {
   };
 }
 
-// NDL Search OpenSearch RSS. Only accept NDL's own catalogue records and an
+// NDL Search SRU, using only NDL's own catalogue. Accept an
 // exact ISBN (older records can contain the ISBN-10 spelling in both fields).
-const NDL_RECORD = /^https:\/\/ndlsearch\.ndl\.go\.jp\/books\/R100000002-I[0-9]+$/;
+const NDL_RECORD = /^https:\/\/ndlsearch\.ndl\.go\.jp\/books\/R100000002-I[0-9]+#material$/;
 const NDL_MAX_BYTES = 256_000;
 const xmlEntities = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
 const xmlText = raw => raw.replace(/&(#x[\da-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (entity, value) => {
@@ -170,7 +170,7 @@ const xmlText = raw => raw.replace(/&(#x[\da-f]+|#\d+|amp|lt|gt|quot|apos);/gi, 
   return n > 0 && n <= 0x10ffff && !(n >= 0xd800 && n <= 0xdfff) ? String.fromCodePoint(n) : entity;
 });
 
-async function readNdlRss(response) {
+async function readNdlXml(response) {
   if (!response.body || !/xml/i.test(response.headers.get('content-type') ?? '')) return '';
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -187,29 +187,36 @@ async function readNdlRss(response) {
 }
 
 async function lookupNdlBook(isbn, upstream) {
-  const url = new URL('https://ndlsearch.ndl.go.jp/api/opensearch');
-  url.searchParams.set('isbn', isbn);
+  const url = new URL('https://ndlsearch.ndl.go.jp/api/sru');
+  url.search = new URLSearchParams({
+    operation: 'searchRetrieve', version: '1.2', maximumRecords: '3',
+    recordSchema: 'dcndl', recordPacking: 'xml', onlyBib: 'true',
+    query: 'dpid="iss-ndl-opac" AND isbn="' + isbn + '"',
+  });
   try {
     const response = await upstream(url, {
-      headers: { Accept: 'application/rss+xml, application/xml, text/xml' },
+      headers: { Accept: 'application/xml, text/xml' },
       redirect: 'manual', signal: AbortSignal.timeout(18000),
     });
     if (!response.ok) return { status: 'http-' + response.status };
-    const rss = await readNdlRss(response);
-    if (!/<rss[\s>]/.test(rss) || /<!DOCTYPE|<!ENTITY/i.test(rss)) return { status: 'invalid-response' };
-    for (const [, record] of rss.replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, '').matchAll(/<item\b[^>]*>([\s\S]*?)<\/item>/g)) {
-      const link = xmlText(record.match(/<link>([^<]*)<\/link>/)?.[1] ?? '').trim();
+    const xml = await readNdlXml(response);
+    if (!/<searchRetrieveResponse[\s>]/.test(xml) || /<!DOCTYPE|<!ENTITY|<diagnostics[\s>]/i.test(xml)) return { status: 'invalid-response' };
+    for (const [, attributes, record] of xml.replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, '')
+      .matchAll(/<dcndl:BibResource\b([^>]*)>([\s\S]*?)<\/dcndl:BibResource>/g)) {
+      const link = xmlText(attributes.match(/\brdf:about="([^"]+)"/)?.[1] ?? '');
       if (!NDL_RECORD.test(link)) continue;
-      const ids = [...record.matchAll(/<dc:identifier\b([^>]*)>([^<]*)<\/dc:identifier>/g)];
-      if (!ids.some(([, attrs, id]) => /\bxsi:type=["']dcndl:ISBN(?:13)?["']/.test(attrs) &&
+      const ids = [...record.matchAll(/<dcterms:identifier\b([^>]*)>([^<]*)<\/dcterms:identifier>/g)];
+      if (!ids.some(([, attrs, id]) => /\brdf:datatype="http:\/\/ndl\.go\.jp\/dcndl\/terms\/ISBN(?:13)?"/.test(attrs) &&
           normalizeIsbn(xmlText(id)) === isbn)) continue;
-      const read = (tag, size) => clip(xmlText(record.match(new RegExp('<' + tag + '(?:\\s[^>]*)?>([^<]*)</' + tag + '>'))?.[1] ?? ''), size);
-      const title = read('dc:title', 300) || read('title', 300);
+      const read = (tag, size, origin = record) => clip(xmlText(origin.match(new RegExp('<' + tag + '(?:\\s[^>]*)?>([^<]*)</' + tag + '>'))?.[1] ?? ''), size);
+      const title = read('dcterms:title', 300) || read('dc:title', 300);
       if (!title) continue;
       const authors = [...record.matchAll(/<dc:creator(?:\s[^>]*)?>([^<]*)<\/dc:creator>/g)]
-        .map(([, s]) => clip(xmlText(s), 200)).filter(Boolean).slice(0, 20);
-      const date = read('dcterms:issued', 20) || read('dc:date', 20);
-      return { value: { found: true, isbn, title, authors, publisher: read('dc:publisher', 200),
+        .map(([, s]) => clip(xmlText(s).replace(/\s+(?:さく・え|作・絵|著|絵|作)$/, ''), 200)).filter(Boolean).slice(0, 20);
+      const publishers = record.match(/<dcterms:publisher\b[^>]*>([\s\S]*?)<\/dcterms:publisher>/)?.[1] ?? '';
+      const date = read('dcterms:issued', 20) || read('dcterms:date', 20);
+      return { value: { found: true, isbn, title, authors,
+        publisher: read('foaf:name', 200, publishers) || read('dc:publisher', 200),
         publishedDate: date.replace(/\./g, '-'), volumeId: '', hasCover: false, source: 'ndl' } };
     }
     return { status: 'no-exact-match' };
