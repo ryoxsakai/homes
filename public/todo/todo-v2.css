@@ -72,24 +72,24 @@ body .todo-page .todo-main { background: var(--works-page); color: var(--works-i
 .todo-page .planner-settings > summary { padding-inline: 12px; color: var(--works-ink-2); font-size: .9rem; }
 
 /* ---------- Page heading ---------- */
-.todo-page .planner-content { padding: 20px var(--works-gutter) 48px; }
+.todo-page .planner-content { padding: var(--homes-content-top) var(--homes-content-gutter) 32px; }
 .todo-page .planner-content .heading {
-  margin: 0 0 12px;
+  margin: 0 0 var(--homes-heading-gap);
   padding: 0;
   border: 0;
   background: transparent;
   align-items: flex-end;
+  gap: 12px 16px;
 }
 .todo-page .planner-content .heading h2,
 .todo-page #view-title {
   margin: 0;
   color: var(--works-ink);
-  font-size: 20px;
+  font-size: var(--homes-heading-size);
   font-weight: 700;
-  line-height: 1.4;
-  letter-spacing: .01em;
+  line-height: var(--homes-heading-leading);
 }
-.todo-page #today-label, .todo-page .planner-content #today-label { margin: 2px 0 0; color: var(--works-ink-3); font-size: .82rem; font-weight: 400; }
+.todo-page #today-label, .todo-page .planner-content #today-label { margin: 2px 0 0; color: var(--works-ink-3); font-size: 13px; line-height: 1.6; font-weight: 400; }
 /* Header actions: secondary buttons (the gradient lives on the header's quick add). */
 .todo-page .heading-actions .btn,
 .todo-page .heading-actions button {
@@ -288,8 +288,11 @@ body .todo-page .todo-main { background: var(--works-page); color: var(--works-i
 /* ---------- Phones ---------- */
 @media (max-width: 730px) {
   /* Phones keep the edge-to-edge list (decided for ToDo; see DESIGN.md). */
-  .todo-page .planner-content { padding: 16px 0 calc(96px + env(safe-area-inset-bottom)); }
-  .todo-page .planner-content .heading { padding: 0 16px; background: transparent; }
+  .todo-page .planner-sidebar { padding: 0; }
+  /* Keep the menu clearance on the main element so it also covers the browse view. */
+  .todo-page .todo-main { padding-bottom: calc(var(--homes-mobile-content-bottom) + env(safe-area-inset-bottom)); }
+  .todo-page .planner-content { padding: var(--homes-content-top) 0 0; }
+  .todo-page .planner-content .heading { padding-inline: var(--homes-content-gutter); background: transparent; }
   .todo-page .planner-content #task-count,
   .todo-page .deadline-panel > summary { padding-inline: 16px; }
   .todo-page #tasks,
@@ -312,7 +315,7 @@ body .todo-page .todo-main { background: var(--works-page); color: var(--works-i
     margin: 0 auto;
     padding: 6px;
     border: 0;
-    border-radius: 999px;
+    border-radius: var(--homes-mobile-menu-radius);
     background: rgb(255 255 255 / .96);
     box-shadow: 0 0 0 1px rgb(16 18 24 / .04), 0 8px 24px rgb(16 18 24 / .14), 0 2px 6px rgb(16 18 24 / .08);
   }
@@ -324,7 +327,7 @@ body .todo-page .todo-main { background: var(--works-page); color: var(--works-i
     height: 48px;
     padding: 0;
     border: 0;
-    border-radius: 999px;
+    border-radius: var(--homes-mobile-menu-radius);
     background: transparent;
     box-shadow: none;
     color: var(--works-ink-3);
@@ -343,7 +346,7 @@ body .todo-page .todo-main { background: var(--works-page); color: var(--works-i
   /* Add stays visible but secondary: the gradient belongs to the header's quick add. */
   .todo-page .bottom-tabs #mobile-add {
     align-self: stretch;
-    border-radius: 999px;
+    border-radius: var(--homes-mobile-menu-radius);
     height: 48px;
     margin: 0;
     background: var(--works-accent-soft);
