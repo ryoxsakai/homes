@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="/shared/works-design.css?v=4">
   <link rel="stylesheet" href="/shared/works-dialogs.css?v=fb98327c">
   <link rel="stylesheet" href="/shared/homes-theme.css?v=1">
-  <link rel="stylesheet" href="/books/books.css?v=photos-1">
+  <link rel="stylesheet" href="/books/books.css?v=borrowed-1">
 </head>
 <body class="books-page">
   <header class="page-header works-header">
@@ -49,6 +49,7 @@
     <section class="books-toolbar" aria-label="本棚の表示">
       <div class="books-status-tabs" role="group" aria-label="所有状況">
         <button type="button" data-status="all" aria-pressed="true">すべて</button>
+        <button type="button" data-status="borrowed" aria-pressed="false">借りた</button>
         <button type="button" data-status="owned" aria-pressed="false">持っている</button>
         <button type="button" data-status="wanted" aria-pressed="false">欲しい</button>
       </div>
@@ -172,6 +173,7 @@
         <div class="books-edit-fields">
           <fieldset class="books-owned-toggle">
             <legend>所有状況</legend>
+            <label><input type="radio" name="status" value="borrowed"><span>借りた</span></label>
             <label><input type="radio" name="status" value="owned" checked><span>持っている</span></label>
             <label><input type="radio" name="status" value="wanted"><span>欲しい</span></label>
           </fieldset>
@@ -231,6 +233,6 @@
 
   <div id="toast" class="books-toast" role="status" aria-live="polite" hidden></div>
 
-  <script type="module" src="/shared/service-entry.mjs?v=6" data-service-app="/books/app.mjs?v=photos-1"></script>
+  <script type="module" src="/shared/service-entry.mjs?v=6" data-service-app="/books/app.mjs?v=borrowed-1"></script>
 </body>
 </html>
