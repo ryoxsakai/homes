@@ -288,3 +288,9 @@
 @media (max-width: 360px) {
   .books-field-row { grid-template-columns: 1fr; }
 }
+@media (max-width: 420px) {
+  .books-toolbar, .books-toolbar:has(.books-display-options[open]) {
+    grid-template-areas: "status status" "options view";
+  }
+  .books-status-tabs button { min-height: 44px; padding-inline: 4px; }
+}
