@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="/shared/works-design.css?v=4">
   <link rel="stylesheet" href="/shared/works-dialogs.css?v=fb98327c">
   <link rel="stylesheet" href="/shared/homes-theme.css?v=1">
-  <link rel="stylesheet" href="/books/books.css?v=borrowed-1">
+  <link rel="stylesheet" href="/books/books.css?v=cover-search-1">
 </head>
 <body class="books-page">
   <header class="page-header works-header">
@@ -178,6 +178,10 @@
             <label><input type="radio" name="status" value="wanted"><span>欲しい</span></label>
           </fieldset>
           <label class="books-field"><span>タイトル<em>必須</em></span><input name="title" required maxlength="300"></label>
+          <a id="cover-image-search" class="books-btn books-cover-search" target="_blank" rel="noopener noreferrer" hidden>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M13 5h6v6M19 5l-9 9M19 13v6H5V5h6"/></svg>
+            Google画像検索で表紙を探す<span class="works-sr-only">（別タブ）</span>
+          </a>
           <label class="books-field"><span>著者・絵</span><input name="authors" maxlength="1000" placeholder="複数の場合は「、」で区切る"></label>
           <div class="books-field-row">
             <label class="books-field"><span>出版社</span><input name="publisher" maxlength="200"></label>
@@ -233,6 +237,6 @@
 
   <div id="toast" class="books-toast" role="status" aria-live="polite" hidden></div>
 
-  <script type="module" src="/shared/service-entry.mjs?v=6" data-service-app="/books/app.mjs?v=borrowed-1"></script>
+  <script type="module" src="/shared/service-entry.mjs?v=6" data-service-app="/books/app.mjs?v=cover-search-1"></script>
 </body>
 </html>
