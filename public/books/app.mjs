@@ -186,7 +186,7 @@ function render() {
   const filtered = books.length !== shelf.books.length;
   $('#result-count').textContent = filtered ? `${books.length}冊を表示（全${shelf.books.length}冊）` : '';
   $('#empty').hidden = books.length > 0;
-  $('#empty-text').textContent = shelf.books.length ? '条件に合う本がありません' : 'まだ本が登録されていません。バーコードを読み取って登録しましょう。';
+  $('#empty-text').textContent = shelf.books.length ? '条件に合う本がありません' : 'まだ本が登録されていません。タイトルやバーコードで本を探せます。';
   $('#empty-add').hidden = shelf.books.length > 0;
 }
 
@@ -202,7 +202,7 @@ for (const dialog of document.querySelectorAll('dialog')) {
   });
   dialog.addEventListener('cancel', event => { event.preventDefault(); requestClose(dialog); });
   dialog.addEventListener('close', () => {
-    if (dialog === $('#add-dialog')) stopScan();
+    if (dialog === $('#add-dialog') && !dialog.open) { stopScan(); cancelTitleSearch(); }
     returnFocus?.focus?.({ preventScroll: true });
   });
 }
@@ -211,24 +211,118 @@ function requestClose(dialog) {
   dialog.close();
 }
 
-// ─── Register: scan or type an ISBN ─────────────────────────────────
+// ─── Register: title, barcode or ISBN ─────────────────────────────────
 let stopCamera = null;
 // Each opening of the registration dialog is a session. A lookup answers only the
 // session that asked, and only while that dialog is still open, so a slow reply
 // can never replace a book the family has meanwhile started editing.
 let addSession = 0;
 let lookingIn = null;
+let registrationMode = 'title';
+let titleRequest = 0;
+let titleAbort = null;
+
+function cancelTitleSearch() {
+  titleRequest++;
+  titleAbort?.abort();
+  titleAbort = null;
+  $('#title-search-form button').disabled = false;
+  $('#title-search-results').replaceChildren();
+  $('#title-search-results').hidden = true;
+  $('#title-search-status').textContent = '';
+  delete $('#title-search-status').dataset.tone;
+}
+
+function setRegistrationMode(mode) {
+  addSession++;
+  cancelTitleSearch();
+  stopScan();
+  registrationMode = mode;
+  $('#registration-title').hidden = mode !== 'title';
+  $('#registration-isbn').hidden = mode !== 'isbn';
+  for (const button of document.querySelectorAll('[data-registration-mode]'))
+    button.setAttribute('aria-pressed', String(button.dataset.registrationMode === mode));
+  setScanMessage(cameraAvailable()
+    ? '裏表紙の上段のバーコードを読み取るか、ISBNを入力してください。'
+    : 'ISBNを入力してください。この端末ではカメラを使えません。');
+}
 
 function openAdd() {
-  addSession++;
+  if ($('#add-dialog').open) return;
   $('#isbn-input').value = '';
-  setScanMessage('裏表紙の上段のバーコード（978から始まる番号）を枠に合わせてください。');
-  $('#scan-start').hidden = !cameraAvailable();
+  $('#title-search-input').value = '';
+  setRegistrationMode('title');
   openDialog($('#add-dialog'));
-  if (cameraAvailable()) beginScan();
-  else { setScanMessage('この端末ではカメラを使えません。ISBNを入力してください。'); $('#isbn-input').focus(); }
 }
 window.homesBooksQuickAdd = openAdd;
+
+function openCandidate(found) {
+  const existing = shelf.books.find(b => (found.isbn && b.isbn === found.isbn) ||
+    (found.volumeId && b.volumeId === found.volumeId));
+  $('#add-dialog').close();
+  if (existing) {
+    editor.open(existing);
+    toast('この本はすでに登録されています');
+  } else {
+    editor.open(null, found);
+    if (found.source === 'ndl') toast('国立国会図書館サーチから書誌情報を入力しました');
+  }
+}
+
+async function searchTitle(raw) {
+  cancelTitleSearch();
+  const query = raw.trim();
+  const status = $('#title-search-status');
+  const list = $('#title-search-results');
+  if (!query) { status.textContent = '本のタイトルを入力してください。'; return; }
+  const request = titleRequest;
+  const controller = new AbortController();
+  titleAbort = controller;
+  const current = () => request === titleRequest && registrationMode === 'title' && $('#add-dialog').open;
+  const submit = $('#title-search-form button');
+  submit.disabled = true;
+  status.textContent = 'タイトルで検索しています…';
+  try {
+    const params = new URLSearchParams({ title: query });
+    const { books, incomplete } = await api('/api/books/search?' + params, { signal: controller.signal });
+    if (!current()) return;
+    if (!books.length) {
+      status.textContent = incomplete
+        ? '候補を表示できませんでした。別の言葉・ISBNで検索するか、手入力で登録できます。'
+        : '該当する本が見つかりませんでした。短いタイトルやISBNでもお試しください。';
+      return;
+    }
+    for (const book of books) {
+      const li = document.createElement('li');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'books-btn books-title-result';
+      const copy = document.createElement('span');
+      const title = document.createElement('strong');
+      title.textContent = book.title;
+      copy.append(title);
+      const detail = [book.authors.join('、'), book.publisher, book.publishedDate, book.isbn && 'ISBN ' + book.isbn].filter(Boolean);
+      if (detail.length) {
+        const sub = document.createElement('small');
+        sub.textContent = detail.join(' · ');
+        copy.append(sub);
+      }
+      button.append(copy);
+      li.append(button);
+      list.append(li);
+      button.addEventListener('click', () => { if (current()) openCandidate(book); });
+    }
+    list.hidden = false;
+    status.textContent = `候補${books.length}件。登録したい本を選んでください。`;
+  } catch (error) {
+    if (!current()) return;
+    status.dataset.tone = 'error';
+    status.textContent = error.status === 400 ? '本のタイトルを確認してください。'
+      : '検索できませんでした。時間をおいて試すか、手入力で登録してください。';
+  } finally {
+    if (current()) { submit.disabled = false; titleAbort = null; }
+  }
+}
 
 function setScanMessage(text, tone = '') {
   const box = $('#scan-message');
@@ -288,12 +382,9 @@ async function lookup(raw) {
   try {
     const found = await api(`/api/books/lookup?isbn=${isbn}`);
     if (!current()) return;
-    $('#add-dialog').close();
-    if (found.found) {
-      editor.open(null, found);
-      if (found.source === 'ndl') toast('国立国会図書館サーチから書誌情報を入力しました');
-    }
+    if (found.found) openCandidate(found);
     else {
+      $('#add-dialog').close();
       editor.open(null, { isbn });
       toast('書誌情報が見つからなかったため、手入力してください');
     }
@@ -593,7 +684,15 @@ $('#open-manage').addEventListener('click', () => { renderManage(); openDialog($
 $('#scan-start').addEventListener('click', beginScan);
 $('#scan-stop').addEventListener('click', () => { stopScan(); setScanMessage('ISBNを入力して検索することもできます。'); });
 $('#isbn-form').addEventListener('submit', event => { event.preventDefault(); stopScan(); lookup($('#isbn-input').value); });
-$('#manual-entry').addEventListener('click', () => { $('#add-dialog').close(); editor.open(null, {}); });
+for (const button of document.querySelectorAll('[data-registration-mode]'))
+  button.addEventListener('click', () => { if (registrationMode !== button.dataset.registrationMode) setRegistrationMode(button.dataset.registrationMode); });
+$('#title-search-form').addEventListener('submit', event => { event.preventDefault(); searchTitle($('#title-search-input').value); });
+$('#title-search-input').addEventListener('input', cancelTitleSearch);
+$('#manual-entry').addEventListener('click', () => {
+  const title = registrationMode === 'title' ? $('#title-search-input').value.trim() : '';
+  $('#add-dialog').close();
+  editor.open(null, { title });
+});
 $('#book-list').addEventListener('click', event => {
   const card = event.target.closest('[data-book]');
   const book = card && shelf.books.find(b => b.id === card.dataset.book);
