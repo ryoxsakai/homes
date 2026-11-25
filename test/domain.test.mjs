@@ -27,7 +27,7 @@ test('both hosts keep OAuth callbacks, attempts and sessions separate without mi
    assert.equal(r.status,303);
    const q=new URL(r.headers.get('location')).searchParams;
    assert.equal(q.get('redirect_uri'),host+'/auth/callback');
-   assert.equal(q.get('scope'),'openid email');
+   assert.equal(q.get('scope'),'openid email profile');
    assert.match(r.headers.get('set-cookie'),/; Secure; HttpOnly; SameSite=Lax/);
    assert.doesNotMatch(r.headers.get('set-cookie'),/Domain=/i);
    return {path:'/auth/callback?code=test&state='+q.get('state'), cookie:ck(r,'__Host-homes-state')};

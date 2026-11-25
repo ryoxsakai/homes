@@ -66,7 +66,7 @@ export async function readBoundedJson(request, limit = MAX_DOCUMENT_BYTES) {
   }
 }
 
-export async function handleHomesData(request, env, member, respond) {
+export async function handleHomesData(request, env, member, respond, {hasPicture = false} = {}) {
   const json = (status, val) => respond(status, JSON.stringify(val), {type:'application/json; charset=utf-8'});
   const error = (status, code) => json(status, {error:code});
   if (!member) return error(401, 'unauthorized');
@@ -87,7 +87,7 @@ export async function handleHomesData(request, env, member, respond) {
   if ((requestOrigin !== null && requestOrigin !== origin) ||
       (fetchSite !== null && !['same-origin', 'none'].includes(fetchSite)) ||
       (method !== 'GET' && requestOrigin !== origin)) return error(403, 'forbidden');
-  if (pathname === '/api/me') return json(200, {name: member.alias});
+  if (pathname === '/api/me') return json(200, {name: member.alias, hasPicture});
   if (pathname === '/api/books/cover') {
     const cover = await fetchCover(searchParams.get('id'));
     return cover ? respond(200, cover.body, {type: cover.type, cache: 'private, max-age=604800'}) : respond(404, null, {type: 'text/plain; charset=utf-8'});

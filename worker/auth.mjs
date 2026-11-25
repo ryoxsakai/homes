@@ -1,6 +1,8 @@
+import { avatarResponse, trustedPicture } from './avatar.mjs';
 import { authorizedMember, readMembers } from './members.mjs';
 import { handleHomesData } from './data.mjs';
-import { installHead, isInstallPath, installResponse } from './install.mjs';
+import { isInstallPath, installResponse } from './install.mjs';
+import { signInCsp, signInPage } from './sign-in.mjs';
 import { isPortalPath, portalResponse } from './portal.mjs';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
@@ -34,11 +36,11 @@ export async function readGoogleIdentity(idToken, clientId, nonce, keys = google
   });
   if (payload.aud !== clientId || (payload.azp !== undefined && payload.azp !== clientId)
       || payload.nonce !== nonce || payload.email_verified !== true || typeof payload.email !== 'string') throw Error('bad identity');
-  return { email: payload.email.toLowerCase(), sub: payload.sub };
+  const picture = trustedPicture(payload.picture);
+  return { email: payload.email.toLowerCase(), sub: payload.sub, ...(picture && { picture }) };
 }
 
 const html = (title, body, head = '') => `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${title} | Homes</title>${head}<main><h1>${title}</h1>${body}</main></html>`;
-const shell = '<a href="/">Homesに戻る</a>';
 
 function response(status, body = null, { cookies = [], location, type = 'text/html; charset=utf-8', referrer = 'no-referrer', cache = 'no-store', csp = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'" } = {}) {
   const headers = new Headers({
@@ -56,7 +58,7 @@ function response(status, body = null, { cookies = [], location, type = 'text/ht
 }
 
 const redirect = (location, cookies = []) => response(303, null, { location, cookies });
-const fail = (status, message, cookies = []) => response(status, html(message, shell), { cookies });
+const fail = (status, message, cookies = []) => response(status, signInPage(message), { cookies, csp: signInCsp });
 const one = (q, k) => q.getAll(k).length === 1 ? q.get(k) : null;
 
 function configured(env, members) {
@@ -79,23 +81,41 @@ export function createApp({ upstream = fetch, verify = readGoogleIdentity, asset
         ? installResponse(request, url, installIcon, response)
         : response(404);
       const dataPath = url.pathname.startsWith('/api/');
+      const avatarPath = url.pathname === '/avatar';
       const portalPath = isPortalPath(url.pathname);
       const dataResponse = (status, error) => response(status, JSON.stringify({error}), {type:'application/json; charset=utf-8'});
-      if (!paths.has(url.pathname) && !dataPath && !portalPath) return fail(404, 'ページがありません');
+      if (!paths.has(url.pathname) && !dataPath && !portalPath && !avatarPath) return fail(404, 'ページがありません');
       const members = readMembers(env);
       if (!configured(env, members)) return dataPath ? dataResponse(503, 'unavailable') : fail(503, 'Homesのログインは準備中です');
       if (!approvedOrigin) return dataPath ? dataResponse(404, 'not_found') : fail(404, 'ページがありません');
       // Existing Worker-host cookies and pending attempts keep their original storage keys.
       // On the custom host even a copied token cannot be replayed against the other host.
       const authKey = value => digest(url.origin === customOrigin ? customOrigin + '|' + value : value);
+      if (avatarPath) {
+        if (request.method !== 'GET') return response(405);
+        const requestOrigin = request.headers.get('Origin');
+        const site = request.headers.get('Sec-Fetch-Site');
+        if (url.search || (requestOrigin !== null && requestOrigin !== url.origin)
+            || (site !== null && !['same-origin', 'none'].includes(site))) return response(404);
+        try {
+          const raw = readCookie(request, sessionCookie);
+          if (!raw) return response(404);
+          const auth = env.AUTH_STORE.get(env.AUTH_STORE.idFromName('homes-auth-v1'));
+          const session = await auth.readAvatar(await authKey(raw));
+          if (!authorizedMember(session, members)) return response(404);
+          return await avatarResponse(session.picture, upstream, response);
+        } catch { return response(503); }
+      }
       if (dataPath) {
         try {
           const raw = readCookie(request, sessionCookie);
           if (!raw) return dataResponse(401, 'unauthorized');
           const auth = env.AUTH_STORE.get(env.AUTH_STORE.idFromName('homes-auth-v1'));
-          const session = await auth.readSession(await authKey(raw));
+          const key = await authKey(raw);
+          const session = url.pathname === '/api/me' && typeof auth.readAvatar === 'function'
+            ? await auth.readAvatar(key) : await auth.readSession(key);
           const member = authorizedMember(session, members);
-          return await handleHomesData(request, env, member, response);
+          return await handleHomesData(request, env, member, response, {hasPicture: Boolean(trustedPicture(session?.picture))});
         } catch { return dataResponse(503, 'unavailable'); }
       }
       if (portalPath) {
@@ -121,9 +141,7 @@ export function createApp({ upstream = fetch, verify = readGoogleIdentity, asset
           if (signedIn && url.search) return redirect('/');
           return signedIn
             ? response(200, html('Homes', '<p>ログイン済みです。家庭用メニューは準備中です。</p><form method="post" action="/auth/logout"><button>ログアウト</button></form>'), { referrer: 'same-origin' })
-            : response(200, html('Homes', '<p>許可されたGoogleアカウントでログインしてください。</p><a href="/auth/start">Googleでログイン</a>', installHead), {
-              csp: "default-src 'none'; manifest-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
-            });
+            : response(200, signInPage(), { csp: signInCsp });
         }
         if (url.pathname === '/auth/logout') {
           if (request.headers.get('Origin') !== url.origin) return fail(403, 'この操作は許可されていません');
@@ -138,7 +156,7 @@ export function createApp({ upstream = fetch, verify = readGoogleIdentity, asset
           const authorize = new URL('https://accounts.google.com/o/oauth2/v2/auth');
           authorize.search = new URLSearchParams({
             client_id: env.GOOGLE_CLIENT_ID, redirect_uri: callback, response_type: 'code',
-            scope: 'openid email', state: stateToken, nonce, code_challenge: await digest(verifier),
+            scope: 'openid email profile', state: stateToken, nonce, code_challenge: await digest(verifier),
             code_challenge_method: 'S256', prompt: 'select_account'
           });
           return redirect(authorize.href, [cookie(stateCookie, stateToken, stateTTL)]);
@@ -163,7 +181,7 @@ export function createApp({ upstream = fetch, verify = readGoogleIdentity, asset
           const identity = await verify(id_token, env.GOOGLE_CLIENT_ID, attempt.nonce);
           if (!authorizedMember(identity, members)) return fail(403, 'このアカウントにはアクセス権がありません', expired);
           const newSession = token();
-          await store.replaceSession(await authKey(newSession), identity.email, identity.sub, sessionKey);
+          await store.replaceSession(await authKey(newSession), identity.email, identity.sub, sessionKey, trustedPicture(identity.picture));
           return redirect('/', [...expired, cookie(sessionCookie, newSession, sessionTTL)]);
         } catch { return fail(502, 'Googleログインを完了できませんでした', expired); }
       } catch { return fail(503, '一時的に利用できません'); }

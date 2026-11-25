@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import { readFile } from 'node:fs/promises';
+import { createHash } from "node:crypto";
 import assert from 'node:assert/strict';
 import { createApp } from '../worker/auth.mjs';
 
@@ -56,4 +57,26 @@ test('public install assets do not access either database or open any private ro
   assert.equal((await get('/todo/')).headers.get('location'), '/');
   assert.equal((await get('/worker/ui/Homes.png')).status, 404);
   assert.equal((await get('/service-worker.js')).status, 404);
+});
+
+test('public sign-in preserves the OAuth link and authorizes only its pinned stylesheet', async () => {
+  const app = createApp();
+  const get = path => app.fetch(new Request(origin + path), env);
+  const home = await get('/');
+  assert.equal(home.status, 200);
+  const html = await home.text();
+  assert.match(html, /href="\/auth\/start"/);
+  assert.match(html, /Googleでログイン/);
+  assert.match(html, /alt=""[^>]*><span>Homes<\/span>/);
+  assert.doesNotMatch(html, /<script|<iframe|https?:\/\//i);
+  const csp = home.headers.get('Content-Security-Policy');
+  const style = html.match(/<style>([\s\S]*?)<\/style>/)[1];
+  assert.ok(csp.includes("style-src 'sha256-" + createHash('sha256').update(style).digest('base64') + "'"));
+  assert.match(csp, /default-src 'none'/);
+  assert.match(csp, /frame-ancestors 'none'/);
+  assert.doesNotMatch(csp, /unsafe-inline/);
+  assert.equal(home.headers.get('Referrer-Policy'), 'no-referrer');
+  const error = await get('/auth/callback');
+  assert.equal(error.status, 400);
+  assert.match(await error.text(), /Homesに戻る/);
 });

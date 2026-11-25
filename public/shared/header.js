@@ -157,43 +157,33 @@ if (actions) {
   window.addEventListener("hashchange", runQuickAdd);
 }
 
-// Show the account photo on the header's account button on every service.
-// Pages that already render their own avatar (#user-avatar) keep doing so.
+// Homes supplies an authenticated same-origin image, never an OAuth provider URL.
 function syncAvatar(user) {
-  const header = document.querySelector(".works-header");
-  const button = header?.querySelector(".user-icon-btn, #auth");
-  if (!button || header.querySelector("#user-avatar")) return;
+  const button = document.querySelector(".works-header .user-icon-btn");
+  if (!button) return;
+  const previous = button.querySelector(".works-avatar-photo");
+  if (user?.picture === "/avatar" && previous) return;
+  previous?.remove();
+  button.classList.remove("has-photo");
+  if (user?.picture !== "/avatar") return;
+
   button.classList.add("works-account");
-  // Workflow rewrites this button's text, which would drop a child <img>; paint the photo as a background.
-  if (button.id === "auth") {
+  const photo = document.createElement("img");
+  photo.className = "works-avatar-photo";
+  photo.alt = "";
+  photo.hidden = true;
+  photo.addEventListener("load", () => {
+    if (!button.contains(photo)) return;
+    photo.hidden = false;
+    button.classList.add("has-photo");
+  }, { once: true });
+  photo.addEventListener("error", () => {
+    if (!button.contains(photo)) return;
+    photo.remove();
     button.classList.remove("has-photo");
-    button.style.removeProperty("--works-avatar");
-    if (!user?.picture) return;
-    const probe = new Image();
-    probe.onload = () => {
-      button.style.setProperty("--works-avatar", `url("${user.picture.replaceAll('"', "%22")}")`);
-      button.classList.add("has-photo");
-    };
-    probe.src = user.picture;
-    return;
-  }
-  let photo = button.querySelector(".works-avatar-photo");
-  if (!photo) {
-    photo = document.createElement("img");
-    photo.className = "works-avatar-photo";
-    photo.alt = "";
-    photo.hidden = true;
-    photo.onload = () => { photo.hidden = false; button.classList.add("has-photo"); };
-    photo.onerror = () => { photo.hidden = true; button.classList.remove("has-photo"); };
-  }
-  if (!button.contains(photo)) button.append(photo);
-  if (user?.picture) {
-    if (photo.getAttribute("src") !== user.picture) { photo.hidden = true; button.classList.remove("has-photo"); photo.src = user.picture; }
-  } else {
-    photo.hidden = true;
-    photo.removeAttribute("src");
-    button.classList.remove("has-photo");
-  }
+  }, { once: true });
+  button.append(photo);
+  photo.src = user.picture;
 }
 
 // Open the target page's own add form once that page has finished loading.

@@ -7,19 +7,25 @@ const origin = 'https://homes.example.test';
 const cookie = (response, prefix) => response.headers.getSetCookie().map(x => x.split(';')[0]).find(x => x.startsWith(prefix));
 const stateCookie = '__Host-homes-state=';
 const sidCookie = '__Host-homes-session=';
-function fixture({ email = 'owner@gmail.com', sub = 'account1', exchangeRedirect = false } = {}) {
+function fixture({ email = 'owner@gmail.com', sub = 'account1', exchangeRedirect = false, picture, imageResponse } = {}) {
   const attempts = new Map(), sessions = new Map();
+  const imageRequests = [];
   const store = {
     putState: async (k,n,v) => attempts.set(k,{nonce:n,verifier:v}),
     takeState: async k => { const a = attempts.get(k); attempts.delete(k); return a; },
-    replaceSession: async (key,email,sub,old) => { sessions.delete(old); sessions.set(key,{email,sub}); },
+    replaceSession: async (key,email,sub,old,picture) => { sessions.delete(old); sessions.set(key,{email,sub,picture}); },
     readSession: async k => sessions.get(k),
+    readAvatar: async k => sessions.get(k),
     removeSession: async k => sessions.delete(k)
   };
-  const env = { HOMES_AUTH_ORIGIN:origin, HOMES_OWNER_EMAIL:'owner@gmail.com', GOOGLE_CLIENT_ID:'test-client', GOOGLE_CLIENT_SECRET:'test-secret', AUTH_STORE:{ idFromName: () => 'store', get: () => store } };
+  const env = { HOME_STORE: {}, HOMES_AUTH_ORIGIN:origin, HOMES_OWNER_EMAIL:'owner@gmail.com', GOOGLE_CLIENT_ID:'test-client', GOOGLE_CLIENT_SECRET:'test-secret', AUTH_STORE:{ idFromName: () => 'store', get: () => store } };
   let exchanges = 0;
   const app = createApp({
     upstream: async (url, init) => {
+      if (url.startsWith('https://lh3.googleusercontent.com/')) {
+        imageRequests.push({url, init});
+        return imageResponse();
+      }
       ++exchanges;
       assert.equal(url, 'https://oauth2.googleapis.com/token');
       assert.equal(init.redirect, 'manual');
@@ -32,7 +38,7 @@ function fixture({ email = 'owner@gmail.com', sub = 'account1', exchangeRedirect
       assert.equal(id, 'test-id');
       assert.equal(aud, env.GOOGLE_CLIENT_ID);
       assert.match(nonce, /^[\w-]{43}$/);
-      return {email,sub};
+      return {email,sub,picture};
     }
   });
   const call = (path, init) => app.fetch(new Request(origin + path, init), env);
@@ -41,12 +47,12 @@ function fixture({ email = 'owner@gmail.com', sub = 'account1', exchangeRedirect
     assert.equal(r.status,303);
     const u = new URL(r.headers.get('Location'));
     assert.equal(u.origin,'https://accounts.google.com');
-    assert.equal(u.searchParams.get('scope'),'openid email');
+    assert.equal(u.searchParams.get('scope'),'openid email profile');
     assert.equal(u.searchParams.get('code_challenge_method'),'S256');
     const s = u.searchParams.get('state');
     return {path:'/auth/callback?state='+s+'&code=fake', headers:{Cookie:cookie(r,stateCookie)}, r};
   };
-  return {call, start, env, app, attempts, sessions, exchanges: () => exchanges};
+  return {call, start, env, app, attempts, sessions, imageRequests, exchanges: () => exchanges};
 }
 
 test('successful sign-in sets secure host-only state and session cookies; releases no tokens', async () => {
@@ -137,6 +143,14 @@ test('OIDC accepts valid signed JWT and rejects wrong signature, issuer, audienc
   }).setProtectedHeader({alg:'RS256',kid:'test'}).sign(key);
   const verify = jwt => readGoogleIdentity(jwt,'test-client','nonce',keys);
   assert.deepEqual(await verify(await make()),{email:'owner@gmail.com',sub:'account1'});
+  assert.equal((await verify(await make({picture:'https://lh3.googleusercontent.com/a-/avatar123=s512-c'}))).picture,
+    'https://lh3.googleusercontent.com/a-/avatar123=s96-c');
+  for (const picture of ['https://other.example/a/a', 'https://lh3.googleusercontent.com.evil.example/a/a',
+    'https://lh3.googleusercontent.com/a/a?x=1', 'https://lh3.googleusercontent.com/a/a#foo',
+    'https://lh3.googleusercontent.com/a/../a/a','http://lh3.googleusercontent.com/a/a',
+    'https://lh3.googleusercontent.com/a/abc\n','https://lh3.googleusercontent.com/a/a%2Fb']) {
+    assert.equal((await verify(await make({picture}))).picture, undefined);
+  }
   for (const claims of [{iss:'https://other.example'},{aud:'bad'},{nonce:'bad'},{email_verified:false},{exp:now-120},{azp:'bad'}]) {
     await assert.rejects(verify(await make(claims)));
   }
@@ -149,4 +163,68 @@ test('upstream redirects fail closed and issue no session', async () => {
   const result = await f.call(attempt.path, {headers:attempt.headers});
   assert.equal(result.status, 502);
   assert.equal(cookie(result,sidCookie), undefined);
+});
+
+const profilePicture = 'https://lh3.googleusercontent.com/a/googleAvatar=s512-c';
+const pictureType = {'Content-Type':'image/png'};
+const pictureBytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+async function login(f) {
+  const s = await f.start();
+  const r = await f.call(s.path, {headers:s.headers});
+  assert.equal(r.status,303);
+  return {Cookie:cookie(r,sidCookie)};
+}
+
+test('avatar is same-origin, session-specific, private, allowlist-checked and not an arbitrary URL proxy', async () => {
+  const f = fixture({picture:profilePicture,imageResponse:()=>new Response(pictureBytes,{headers:pictureType})});
+  assert.equal((await f.call('/avatar')).status,404);
+  const headers = await login(f);
+  const me = await f.call('/api/me',{headers});
+  assert.deepEqual(await me.json(),{name:'管理者',hasPicture:true});
+  assert.equal((await f.call('/avatar?url=https://example.org',{headers})).status,404);
+  assert.equal((await f.call('/avatar',{headers,method:'POST'})).status,405);
+  assert.equal((await f.app.fetch(new Request('https://homes.lrnr.jp/avatar',{headers}),f.env)).status,404);
+  for (const site of ['same-site','cross-site']) {
+    assert.equal((await f.call('/avatar',{headers:{...headers,'Sec-Fetch-Site':site}})).status,404);
+  }
+  assert.equal((await f.call('/avatar',{headers:{...headers,Origin:'https://elsewhere.example'}})).status,404);
+  assert.equal(f.imageRequests.length,0);
+  const r = await f.call('/avatar',{headers:{...headers, Referer:origin+'/app', Authorization:'private'}});
+  assert.equal(r.status,200);
+  assert.equal(r.headers.get('Content-Type'),'image/png');
+  assert.equal(r.headers.get('Cache-Control'),'no-store');
+  assert.equal(r.headers.get('Cross-Origin-Resource-Policy'),'same-origin');
+  assert.equal(r.headers.get('X-Content-Type-Options'),'nosniff');
+  assert.equal(r.headers.get('Location'),null);
+  assert.deepEqual(new Uint8Array(await r.arrayBuffer()),pictureBytes);
+  assert.equal(f.imageRequests[0].url,'https://lh3.googleusercontent.com/a/googleAvatar=s96-c');
+  assert.equal(f.imageRequests[0].init.redirect,'manual');
+  assert.deepEqual(f.imageRequests[0].init.headers, {Accept:'image/jpeg, image/png, image/webp'});
+  f.env.HOMES_OWNER_EMAIL = 'another@gmail.com';
+  assert.equal((await f.call('/avatar',{headers})).status,404);
+  f.env.HOMES_OWNER_EMAIL = 'owner@gmail.com';
+  await f.call('/auth/logout',{method:'POST',headers:{...headers,Origin:origin}});
+  assert.equal((await f.call('/avatar',{headers})).status,404);
+  assert.equal(f.imageRequests.length,1);
+});
+
+test('legacy/missing picture remains a valid login and avatar failures produce the fallback', async () => {
+  const legacy = fixture(), headers = await login(legacy);
+  assert.deepEqual(await (await legacy.call('/api/me',{headers})).json(),{name:'管理者',hasPicture:false});
+  assert.equal((await legacy.call('/avatar',{headers})).status,404);
+  const cases = [
+    () => Response.redirect('https://elsewhere.example/private'),
+    () => new Response('<svg />',{headers:{'Content-Type':'image/svg+xml'}}),
+    () => new Response('<html />',{headers:pictureType}),
+    () => new Response(pictureBytes,{headers:{...pictureType,'Content-Length':'98305'}}),
+    () => new Response(new ReadableStream({start(c){c.enqueue(pictureBytes); c.enqueue(new Uint8Array(98304)); c.close();}}),{headers:pictureType}),
+    () => {throw Error('network');}
+  ];
+  for (const imageResponse of cases) {
+    const f = fixture({picture:profilePicture,imageResponse}), headers = await login(f);
+    const r = await f.call('/avatar',{headers});
+    assert.equal(r.status,404);
+    assert.equal(r.headers.get('Location'),null);
+    assert.equal(f.imageRequests.length,1);
+  }
 });
