@@ -32,6 +32,15 @@ test('shelf documents are validated against their own lists', () => {
   assert.throws(() => validateBooks(shelf([book(), book()])), { status: 400 });
 });
 
+test('borrowing can be recorded and changed without rewriting other statuses', () => {
+  const old = shelf([book(), book({ id: 'b2', status: 'wanted' })]);
+  const borrowed = book({ id: 'b3', status: 'borrowed' });
+  const next = nextBooks(old, { ...old, books: [...old.books, borrowed] }, '家族');
+  assert.deepEqual(next.books.map(b => b.status), ['owned', 'wanted', 'borrowed']);
+  const updated = nextBooks(next, { ...next, books: next.books.map(b => b.id === 'b3' ? { ...b, status: 'owned' } : b) }, '家族');
+  assert.deepEqual(updated.books.map(b => b.status), ['owned', 'wanted', 'owned']);
+});
+
 test('the server records who registered a book and enforces the revision', () => {
   const current = { ...shelf([]), revision: 2 };
   const added = nextBooks(current, { ...shelf([book({ createdBy: '偽名' })]), revision: 2 }, '家族A');
