@@ -118,11 +118,12 @@
   background: linear-gradient(160deg, #f3e2d3, #e9d3c0); color: var(--works-accent-strong);
   font-size: 13px; font-weight: 700; line-height: 1.45; text-align: center; overflow-wrap: anywhere;
 }
-.books-wanted-badge {
-  position: absolute; top: 6px; left: 6px; padding: 1px 8px; border-radius: 999px;
-  background: var(--works-warning-soft); color: var(--works-warning); font-size: 11px; font-weight: 700;
-  box-shadow: var(--works-shadow-sm);
-}
+.books-status-badge { flex: none; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.books-status-wanted { background: var(--works-warning-soft); color: var(--works-warning); }
+.books-status-borrowed { background: var(--works-track); color: var(--works-ink); }
+.books-cover .books-status-badge { position: absolute; top: 6px; left: 6px; box-shadow: var(--works-shadow-sm); }
+.books-card-heading { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.books-card-heading .books-card-title { min-width: 0; }
 .books-card-text { display: grid; gap: 2px; min-width: 0; }
 .books-card-title { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-weight: 700; line-height: 1.4; }
 .books-card-author { overflow: hidden; color: var(--works-ink-2); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
@@ -145,13 +146,8 @@
 .books-list .books-card:hover { background: var(--works-hover); }
 .books-list .books-cover { flex: 0 0 48px; width: 48px; border-radius: 4px; box-shadow: var(--works-shadow-sm); }
 .books-list .books-cover-blank { padding: 3px; font-size: 8px; }
-.books-list .books-wanted-badge { display: none; }
 .books-list .books-card-text { flex: 1; }
 .books-list .books-card-title { -webkit-line-clamp: 1; }
-.books-list .books-card:has(.books-wanted-badge) .books-card-title::after {
-  content: "欲しい"; margin-left: 8px; padding: 0 8px; border-radius: 999px; vertical-align: 1px;
-  background: var(--works-warning-soft); color: var(--works-warning); font-size: 11px;
-}
 
 .books-empty { margin-top: 24px; padding: 40px 16px; border-radius: 8px; background: var(--works-surface); color: var(--works-ink-2); text-align: center; box-shadow: var(--works-shadow); }
 .books-empty p { margin: 0 0 12px; }
