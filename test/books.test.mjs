@@ -160,7 +160,7 @@ test('Books lookup falls back on a quota denial and returns the exact NDL record
     if (url.hostname === 'www.googleapis.com') return Response.json({}, { status: 429 });
     assert.equal(url.href, 'https://ndlsearch.ndl.go.jp/api/opensearch?isbn=' + isbn);
     assert.equal(init.headers['X-Goog-Api-Key'], undefined);
-    assert.equal(init.redirect, 'error');
+    assert.equal(init.redirect, 'manual');
     return new Response(rss, { headers: { 'Content-Type': 'application/rss+xml' } });
   });
   assert.deepEqual(calls, ['www.googleapis.com', 'ndlsearch.ndl.go.jp']);
