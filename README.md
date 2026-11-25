@@ -49,7 +49,7 @@ npm test
 - **項目**：持っている／欲しい、場所、カテゴリ、タグ（自由入力、30個まで）、メモ。場所とカテゴリは「分類と場所」で追加・名前の変更（登録済みの本にも反映）・並び順の変更・削除ができます。登録した家族の表示名はサーバーが記録します。
 - **一覧**：表紙のグリッド／リスト表示、所有状況・カテゴリ・場所・タグでの絞り込み、検索（タイトル・著者・タグ・メモ・ISBN）、並べ替え（登録日・タイトル・著者・出版日・場所・カテゴリ）。並べ替えと表示形式だけをブラウザーに記憶します。タイトル順は文字コード順に近い日本語照合のため、漢字の書名は読みの順になりません。
 - **API**：`GET|PUT /api/books`（本棚全体を revision 付きで保存。検証は `worker/books.mjs`）、`GET /api/books/lookup?isbn=…`、`GET /api/books/cover?id=…`。保存先は他と同じ Durable Object の `documents` テーブル（`kind = 'books'`、最大3000冊）。
-- **Google Books の API キー（任意）**：キーなしでも動きますが、Cloudflare の共有 IP からの無認証リクエストは利用上限に当たりやすいため、Google Cloud で Books API を有効にした API キーを Worker の Secret `GOOGLE_BOOKS_API_KEY` に登録することをおすすめします（`npx wrangler secret put GOOGLE_BOOKS_API_KEY`）。上限に当たった場合は、画面から手入力で登録できます。
+- **Google Books の API キー（任意）**：キーなしでも動きますが、Cloudflare の共有 IP からの無認証リクエストは利用上限に当たりやすいため、Google Cloud で Books API を有効にした API キーを Worker の Secret `GOOGLE_BOOKS_API_KEY` に登録することをおすすめします（`npx wrangler secret put GOOGLE_BOOKS_API_KEY`）。上限に当たった場合は、画面から手入力で登録できます。キーは URL ではなく `X-Goog-Api-Key` ヘッダーで送ります。Google が拒否した場合は、理由（キーが無効、Books API が無効、キーの制限、利用上限、キー未設定）を画面に表示し、Worker のログにも状態コードと理由を残します。失敗した応答はエッジにキャッシュしません。
 
 ### 家族それぞれの Google ログインと ToDo の操作表示
 
