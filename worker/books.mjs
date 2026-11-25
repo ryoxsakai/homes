@@ -54,7 +54,13 @@ export function nextBooks(current, input, actor) {
   if (!Array.isArray(state.books)) reject('本棚の入力形式が不正です');
   const previous = new Map(current.books.map(b => [b.id, b]));
   for (const book of state.books) {
-    if (book && typeof book === 'object') book.createdBy = previous.has(book.id) ? previous.get(book.id).createdBy ?? null : actor;
+    if (book && typeof book === 'object') {
+      const prev = previous.get(book.id);
+      book.createdBy = prev ? prev.createdBy ?? null : actor;
+      // Only the private photo storage transaction may change this reference.
+      delete book.photoId;
+      if (prev?.photoId) book.photoId = prev.photoId;
+    }
   }
   validateBooks(state);
   return state;
