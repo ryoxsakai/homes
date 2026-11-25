@@ -195,9 +195,14 @@ function requestClose(dialog) {
 
 // ─── Register: scan or type an ISBN ─────────────────────────────────
 let stopCamera = null;
-let looking = false;
+// Each opening of the registration dialog is a session. A lookup answers only the
+// session that asked, and only while that dialog is still open, so a slow reply
+// can never replace a book the family has meanwhile started editing.
+let addSession = 0;
+let lookingIn = null;
 
 function openAdd() {
+  addSession++;
   $('#isbn-input').value = '';
   setScanMessage('裏表紙の上段のバーコード（978から始まる番号）を枠に合わせてください。');
   $('#scan-start').hidden = !cameraAvailable();
@@ -257,11 +262,14 @@ async function lookup(raw) {
     toast('この本はすでに登録されています');
     return;
   }
-  if (looking) return;
-  looking = true;
+  const session = addSession;
+  if (lookingIn === session) return;
+  lookingIn = session;
+  const current = () => session === addSession && $('#add-dialog').open;
   setScanMessage(`ISBN ${isbn} を検索しています…`);
   try {
     const found = await api(`/api/books/lookup?isbn=${isbn}`);
+    if (!current()) return;
     $('#add-dialog').close();
     if (found.found) editor.open(null, found);
     else {
@@ -269,6 +277,7 @@ async function lookup(raw) {
       toast('Google Booksに見つからなかったため、手入力してください');
     }
   } catch (error) {
+    if (!current()) return;
     setScanMessage(`${error.message}。`, 'error');
     if (error.status === 503) {
       // The family can still register the book by hand.
@@ -280,7 +289,7 @@ async function lookup(raw) {
       $('#scan-message').append(' ', manual);
     }
   } finally {
-    looking = false;
+    if (lookingIn === session) lookingIn = null;
   }
 }
 
