@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="/shared/works-design.css?v=4">
   <link rel="stylesheet" href="/shared/works-dialogs.css?v=fb98327c">
   <link rel="stylesheet" href="/shared/homes-theme.css?v=1">
-  <link rel="stylesheet" href="/books/books.css?v=title-search-1">
+  <link rel="stylesheet" href="/books/books.css?v=scanner-first-1">
 </head>
 <body class="books-page">
   <header class="page-header works-header">
@@ -129,38 +129,35 @@
       </button>
     </div>
     <div class="books-dialog-body">
-      <div class="books-registration-switch books-status-tabs" role="group" aria-label="本の探し方">
-        <button type="button" data-registration-mode="title" aria-controls="registration-title" aria-pressed="true">タイトル</button>
-        <button type="button" data-registration-mode="isbn" aria-controls="registration-isbn" aria-pressed="false">ISBN・バーコード</button>
-      </div>
+      <section id="registration-isbn" aria-label="バーコード・ISBNで検索">
+        <div class="books-scanner" id="scanner" hidden>
+          <video id="scanner-video" muted playsinline></video>
+          <div class="books-scanner-guide" aria-hidden="true"><span></span></div>
+        </div>
+        <p id="scan-message" class="books-scan-message" role="status" aria-live="polite">裏表紙の上段のバーコード（978から始まる番号）を枠に合わせてください。</p>
+        <div class="books-scan-actions">
+          <button id="scan-start" class="books-btn books-btn-primary" type="button">カメラで読み取る</button>
+          <button id="scan-stop" class="books-btn" type="button" hidden>カメラを止める</button>
+        </div>
+        <form id="isbn-form" class="books-isbn-form" novalidate>
+          <label for="isbn-input">ISBNを入力</label>
+          <div class="books-isbn-row">
+            <input id="isbn-input" inputmode="numeric" autocomplete="off" placeholder="978…（10桁も可）" maxlength="17">
+            <button class="books-btn" type="submit" aria-label="ISBNで検索">検索</button>
+          </div>
+        </form>
+        <p id="isbn-search-status" class="books-scan-message" role="status" aria-live="polite"></p>
+      </section>
       <section id="registration-title" aria-label="タイトルで検索">
         <form id="title-search-form" class="books-isbn-form">
           <label for="title-search-input">本のタイトル</label>
           <div class="books-isbn-row">
             <input id="title-search-input" type="search" enterkeyhint="search" autocomplete="off" placeholder="例：ぐりとぐら" maxlength="200" required>
-            <button class="books-btn books-btn-primary" type="submit">検索</button>
+            <button class="books-btn books-btn-primary" type="submit" aria-label="タイトルで検索">検索</button>
           </div>
         </form>
         <p id="title-search-status" class="books-scan-message" role="status"></p>
         <ul id="title-search-results" class="books-title-results" aria-label="タイトル検索の候補" hidden></ul>
-      </section>
-      <section id="registration-isbn" aria-label="ISBN・バーコードで検索" hidden>
-      <div class="books-scanner" id="scanner" hidden>
-        <video id="scanner-video" muted playsinline></video>
-        <div class="books-scanner-guide" aria-hidden="true"><span></span></div>
-      </div>
-      <p id="scan-message" class="books-scan-message" role="status" aria-live="polite">裏表紙の上段のバーコード（978から始まる番号）を枠に合わせてください。</p>
-      <div class="books-scan-actions">
-        <button id="scan-start" class="books-btn books-btn-primary" type="button">カメラで読み取る</button>
-        <button id="scan-stop" class="books-btn" type="button" hidden>カメラを止める</button>
-      </div>
-      <form id="isbn-form" class="books-isbn-form" novalidate>
-        <label for="isbn-input">ISBNを入力</label>
-        <div class="books-isbn-row">
-          <input id="isbn-input" inputmode="numeric" autocomplete="off" placeholder="978…（10桁も可）" maxlength="17">
-          <button class="books-btn" type="submit">検索</button>
-        </div>
-      </form>
       </section>
       <button id="manual-entry" class="books-link-btn" type="button">手入力で登録</button>
     </div>
@@ -254,6 +251,6 @@
 
   <div id="toast" class="books-toast" role="status" aria-live="polite" hidden></div>
 
-  <script type="module" src="/shared/service-entry.mjs?v=6" data-service-app="/books/app.mjs?v=title-search-1"></script>
+  <script type="module" src="/shared/service-entry.mjs?v=6" data-service-app="/books/app.mjs?v=scanner-first-1"></script>
 </body>
 </html>

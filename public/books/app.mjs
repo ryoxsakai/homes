@@ -4,7 +4,7 @@ import { watchAuth, signOutUser } from '../shared/auth.js?v=14';
 import { normalizeIsbn } from './isbn.mjs';
 import { readBooksPreferences, writeBooksPreferences } from './preferences.mjs?v=borrowed-1';
 import { prepareCoverPhoto } from './cover-photo.mjs';
-import { cameraAvailable, startScanner } from './scanner.mjs?v=1';
+import { cameraAvailable, startScanner } from './scanner.mjs?v=2';
 
 const $ = selector => document.querySelector(selector);
 const collator = new Intl.Collator('ja', { numeric: true, sensitivity: 'base' });
@@ -202,7 +202,11 @@ for (const dialog of document.querySelectorAll('dialog')) {
   });
   dialog.addEventListener('cancel', event => { event.preventDefault(); requestClose(dialog); });
   dialog.addEventListener('close', () => {
-    if (dialog === $('#add-dialog') && !dialog.open) { stopScan(); cancelTitleSearch(); }
+    if (dialog === $('#add-dialog') && !dialog.open) {
+      resetRegistration();
+      // If add handed off to the editor, leave the editor's focus alone.
+      if ($('#book-dialog').open) return;
+    }
     returnFocus?.focus?.({ preventScroll: true });
   });
 }
@@ -212,13 +216,11 @@ function requestClose(dialog) {
 }
 
 // ─── Register: title, barcode or ISBN ─────────────────────────────────
-let stopCamera = null;
 // Each opening of the registration dialog is a session. A lookup answers only the
 // session that asked, and only while that dialog is still open, so a slow reply
 // can never replace a book the family has meanwhile started editing.
-let addSession = 0;
-let lookingIn = null;
-let registrationMode = 'title';
+let isbnRequest = 0;
+let isbnAbort = null;
 let titleRequest = 0;
 let titleAbort = null;
 
@@ -233,26 +235,29 @@ function cancelTitleSearch() {
   delete $('#title-search-status').dataset.tone;
 }
 
-function setRegistrationMode(mode) {
-  addSession++;
+function cancelIsbnSearch() {
+  isbnRequest++;
+  isbnAbort?.abort();
+  isbnAbort = null;
+  setIsbnMessage('');
+}
+
+function resetRegistration() {
   cancelTitleSearch();
+  cancelIsbnSearch();
   stopScan();
-  registrationMode = mode;
-  $('#registration-title').hidden = mode !== 'title';
-  $('#registration-isbn').hidden = mode !== 'isbn';
-  for (const button of document.querySelectorAll('[data-registration-mode]'))
-    button.setAttribute('aria-pressed', String(button.dataset.registrationMode === mode));
-  setScanMessage(cameraAvailable()
-    ? '裏表紙の上段のバーコードを読み取るか、ISBNを入力してください。'
-    : 'ISBNを入力してください。この端末ではカメラを使えません。');
 }
 
 function openAdd() {
   if ($('#add-dialog').open) return;
   $('#isbn-input').value = '';
   $('#title-search-input').value = '';
-  setRegistrationMode('title');
+  resetRegistration();
+  setScanMessage(cameraAvailable()
+    ? '裏表紙の上段のバーコードを読み取れます。'
+    : 'この端末ではカメラを使えません。ISBNまたはタイトルで検索できます。');
   openDialog($('#add-dialog'));
+  if (cameraAvailable()) void beginScan();
 }
 window.homesBooksQuickAdd = openAdd;
 
@@ -270,6 +275,8 @@ function openCandidate(found) {
 }
 
 async function searchTitle(raw) {
+  stopScanForText();
+  cancelIsbnSearch();
   cancelTitleSearch();
   const query = raw.trim();
   const status = $('#title-search-status');
@@ -278,7 +285,7 @@ async function searchTitle(raw) {
   const request = titleRequest;
   const controller = new AbortController();
   titleAbort = controller;
-  const current = () => request === titleRequest && registrationMode === 'title' && $('#add-dialog').open;
+  const current = () => request === titleRequest && $('#add-dialog').open;
   const submit = $('#title-search-form button');
   submit.disabled = true;
   status.textContent = 'タイトルで検索しています…';
@@ -324,31 +331,41 @@ async function searchTitle(raw) {
   }
 }
 
-function setScanMessage(text, tone = '') {
-  const box = $('#scan-message');
+function setStatus(id, text, tone) {
+  const box = $(id);
   box.textContent = text;
   box.dataset.tone = tone;
 }
+const setScanMessage = (text, tone = '') => setStatus('#scan-message', text, tone);
+const setIsbnMessage = (text, tone = '') => setStatus('#isbn-search-status', text, tone);
 
-// Each start gets a number, so a camera that finishes starting after the family
-// pressed stop, typed an ISBN or closed the dialog is shut down straight away.
-let scanSession = 0;
+let scanAbort = null;
 async function beginScan() {
-  if (stopCamera) return;
-  const session = ++scanSession;
+  if (scanAbort || !$('#add-dialog').open || !cameraAvailable()) return;
+  cancelTitleSearch();
+  cancelIsbnSearch();
+  const controller = new AbortController();
+  scanAbort = controller;
+  const active = () => scanAbort === controller && !controller.signal.aborted && $('#add-dialog').open;
   showScanner(true);
   setScanMessage('カメラを起動しています…');
   try {
     const stop = await startScanner($('#scanner-video'), {
-      onIsbn: isbn => { stopCamera = null; showScanner(false); lookup(isbn); },
-      onOther: () => setScanMessage('上段の「978」から始まるバーコードを写してください（下段は価格のバーコードです）。', 'warn'),
+      signal: controller.signal,
+      onIsbn: isbn => {
+        if (!active()) return;
+        $('#isbn-input').value = isbn;
+        void lookup(isbn);
+      },
+      onOther: () => {
+        if (active()) setScanMessage('裏表紙の上段のバーコードを写してください（下段は価格のバーコードです）。', 'warn');
+      },
     });
-    if (session !== scanSession || !$('#add-dialog').open) { stop(); return; }
-    stopCamera = stop;
-    setScanMessage('裏表紙の上段のバーコード（978から始まる番号）を枠に合わせてください。');
+    if (!active()) { stop(); return; }
+    setScanMessage('裏表紙の上段のバーコードを枠に合わせてください。');
   } catch (error) {
-    if (session !== scanSession) return;
-    showScanner(false);
+    if (!active()) return;
+    stopScan();
     setScanMessage(error.message, 'error');
   }
 }
@@ -358,15 +375,22 @@ function showScanner(on) {
   $('#scan-start').hidden = on || !cameraAvailable();
 }
 function stopScan() {
-  scanSession++;
-  stopCamera?.();
-  stopCamera = null;
+  scanAbort?.abort();
+  scanAbort = null;
   showScanner(false);
+}
+function stopScanForText() {
+  const wasScanning = !!scanAbort;
+  stopScan();
+  if (wasScanning) setScanMessage('カメラを停止しました。ISBNまたはタイトルで検索できます。');
 }
 
 async function lookup(raw) {
+  stopScanForText();
+  cancelTitleSearch();
+  cancelIsbnSearch();
   const isbn = normalizeIsbn(raw);
-  if (!isbn) { setScanMessage('ISBNの番号を確認してください（13桁または10桁）。', 'error'); return; }
+  if (!isbn) { setIsbnMessage('ISBNの番号を確認してください（13桁または10桁）。', 'error'); return; }
   const existing = shelf.books.find(b => b.isbn === isbn);
   if (existing) {
     $('#add-dialog').close();
@@ -374,13 +398,13 @@ async function lookup(raw) {
     toast('この本はすでに登録されています');
     return;
   }
-  const session = addSession;
-  if (lookingIn === session) return;
-  lookingIn = session;
-  const current = () => session === addSession && $('#add-dialog').open;
-  setScanMessage(`ISBN ${isbn} を検索しています…`);
+  const request = isbnRequest;
+  const controller = new AbortController();
+  isbnAbort = controller;
+  const current = () => request === isbnRequest && $('#add-dialog').open;
+  setIsbnMessage(`ISBN ${isbn} を検索しています…`);
   try {
-    const found = await api(`/api/books/lookup?isbn=${isbn}`);
+    const found = await api(`/api/books/lookup?isbn=${isbn}`, { signal: controller.signal });
     if (!current()) return;
     if (found.found) openCandidate(found);
     else {
@@ -395,7 +419,7 @@ async function lookup(raw) {
       : ({ timeout: '応答なし', 'request-failed': '通信エラー', 'no-exact-match': '該当なし' })[ndl] || '';
     const message = error.message.replace(/。$/, '') + '。' +
       (ndlReason ? `国立国会図書館サーチも取得できませんでした（${ndlReason}）。` : '');
-    setScanMessage(message, 'error');
+    setIsbnMessage(message, 'error');
     if (error.status === 503) {
       // The family can still register the book by hand.
       const manual = document.createElement('button');
@@ -403,10 +427,10 @@ async function lookup(raw) {
       manual.className = 'books-link-btn';
       manual.textContent = 'このISBNで手入力する';
       manual.addEventListener('click', () => { $('#add-dialog').close(); editor.open(null, { isbn }); });
-      $('#scan-message').append(' ', manual);
+      $('#isbn-search-status').append(' ', manual);
     }
   } finally {
-    if (lookingIn === session) lookingIn = null;
+    if (current()) isbnAbort = null;
   }
 }
 
@@ -682,16 +706,19 @@ $('#open-add').addEventListener('click', openAdd);
 $('#empty-add').addEventListener('click', openAdd);
 $('#open-manage').addEventListener('click', () => { renderManage(); openDialog($('#manage-dialog')); });
 $('#scan-start').addEventListener('click', beginScan);
-$('#scan-stop').addEventListener('click', () => { stopScan(); setScanMessage('ISBNを入力して検索することもできます。'); });
-$('#isbn-form').addEventListener('submit', event => { event.preventDefault(); stopScan(); lookup($('#isbn-input').value); });
-for (const button of document.querySelectorAll('[data-registration-mode]'))
-  button.addEventListener('click', () => { if (registrationMode !== button.dataset.registrationMode) setRegistrationMode(button.dataset.registrationMode); });
-$('#title-search-form').addEventListener('submit', event => { event.preventDefault(); searchTitle($('#title-search-input').value); });
-$('#title-search-input').addEventListener('input', cancelTitleSearch);
+$('#scan-stop').addEventListener('click', stopScanForText);
+$('#isbn-form').addEventListener('submit', event => { event.preventDefault(); void lookup($('#isbn-input').value); });
+$('#title-search-form').addEventListener('submit', event => { event.preventDefault(); void searchTitle($('#title-search-input').value); });
+for (const field of ['#isbn-input', '#title-search-input']) $(field).addEventListener('input', () => {
+  stopScanForText();
+  cancelIsbnSearch();
+  cancelTitleSearch();
+});
 $('#manual-entry').addEventListener('click', () => {
-  const title = registrationMode === 'title' ? $('#title-search-input').value.trim() : '';
+  const title = $('#title-search-input').value.trim();
+  const isbn = normalizeIsbn($('#isbn-input').value) || '';
   $('#add-dialog').close();
-  editor.open(null, { title });
+  editor.open(null, { title, isbn });
 });
 $('#book-list').addEventListener('click', event => {
   const card = event.target.closest('[data-book]');
@@ -746,7 +773,8 @@ $('#sign-out').addEventListener('click', async () => {
   await signOutUser();
   if (window === top) location.replace('/');
 });
-document.addEventListener('visibilitychange', () => { if (document.hidden) stopScan(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) stopScanForText(); });
+window.addEventListener('pagehide', resetRegistration);
 
 watchAuth({
   async onSignedIn() {

@@ -53,8 +53,9 @@ export function cameraAvailable() {
 // Starts the camera in `video` and calls onIsbn(isbn) once for the first ISBN read.
 // onOther() is called (throttled) when a non-ISBN EAN-13 such as the price code is seen.
 // Resolves to a stop() function; rejects with a user-facing message.
-export async function startScanner(video, { onIsbn, onOther }) {
-  if (!cameraAvailable()) throw Error('この端末ではカメラを使えません。ISBNを入力してください');
+export async function startScanner(video, { onIsbn, onOther, signal }) {
+  signal?.throwIfAborted();
+  if (!cameraAvailable()) throw Error('この端末ではカメラを使えません。ISBNまたはタイトルで検索してください');
   let stream;
   try {
     stream = await navigator.mediaDevices.getUserMedia({
@@ -63,20 +64,31 @@ export async function startScanner(video, { onIsbn, onOther }) {
     });
   } catch (error) {
     throw Error(error?.name === 'NotAllowedError'
-      ? 'カメラの使用が許可されていません。ブラウザーの設定で許可するか、ISBNを入力してください'
-      : 'カメラを起動できませんでした。ISBNを入力してください');
+      ? 'カメラの使用が許可されていません。ブラウザーの設定で許可するか、ISBNまたはタイトルで検索してください'
+      : 'カメラを起動できませんでした。ISBNまたはタイトルで検索してください');
   }
+  // getUserMedia itself cannot be aborted. A permission dialog can therefore
+  // resolve after closing / restarting, but its stream must never take over
+  // the video or start decoding for the obsolete attempt.
+  if (signal?.aborted) {
+    for (const track of stream.getTracks()) track.stop();
+    signal.throwIfAborted();
+  }
+  let stopped = false;
+  let timer;
+  const stop = () => {
+    if (stopped) return;
+    stopped = true;
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', stop);
+    for (const track of stream.getTracks()) track.stop();
+    if (video.srcObject === stream) video.srcObject = null;
+  };
+  signal?.addEventListener('abort', stop, { once: true });
   video.muted = true;
   video.playsInline = true;
   video.setAttribute('playsinline', '');
   video.srcObject = stream;
-  let stopped = false;
-  const stop = () => {
-    if (stopped) return;
-    stopped = true;
-    for (const track of stream.getTracks()) track.stop();
-    video.srcObject = null;
-  };
   try {
     await video.play();
   } catch {
@@ -84,14 +96,17 @@ export async function startScanner(video, { onIsbn, onOther }) {
     throw Error('カメラの映像を表示できませんでした');
   }
 
+  if (stopped) return stop;
   const detector = await nativeDetector();
+  if (stopped) return stop;
   let decode;
   if (!detector) {
     try { decode = await zxingDecoder(); } catch {
       stop();
-      throw Error('読み取り機能を読み込めませんでした。ISBNを入力してください');
+      throw Error('読み取り機能を読み込めませんでした。ISBNまたはタイトルで検索してください');
     }
   }
+  if (stopped) return stop;
   const canvas = document.createElement('canvas');
   const context = canvas.getContext('2d', { willReadFrequently: true });
   let lastOther = 0;
@@ -100,7 +115,7 @@ export async function startScanner(video, { onIsbn, onOther }) {
     if (stopped || !text) return false;
     if (isIsbn13(text)) {
       stop();
-      navigator.vibrate?.(60);
+      try { navigator.vibrate?.(60); } catch { /* Haptics are optional. */ }
       onIsbn(text);
       return true;
     }
@@ -126,7 +141,7 @@ export async function startScanner(video, { onIsbn, onOther }) {
         }
       } catch { /* Keep scanning; a single frame can fail. */ }
     }
-    setTimeout(tick, detector ? 120 : 180);
+    if (!stopped) timer = setTimeout(tick, detector ? 120 : 180);
   };
   tick();
   return stop;
