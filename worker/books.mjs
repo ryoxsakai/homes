@@ -1,4 +1,4 @@
-// Bookshelf (本棚) for Homes: the household's picture books, owned or wanted.
+// Bookshelf (本棚) for Homes: the household's picture books, borrowed, owned or wanted.
 // The whole shelf is one revisioned document, like the Works-based ToDo and Memo.
 // Book metadata and covers come from Google Books through this Worker, so pages
 // keep their same-origin CSP and family browsers never contact Google directly.
@@ -7,7 +7,7 @@ import { isIsbn13, normalizeIsbn } from '../public/books/isbn.mjs';
 
 export { isIsbn13, normalizeIsbn };
 
-export const BOOK_STATUSES = ['owned', 'wanted'];
+export const BOOK_STATUSES = ['borrowed', 'owned', 'wanted'];
 export const MAX_BOOKS = 3000;
 const VOLUME_ID = /^[A-Za-z0-9_-]{4,40}$/;
 const reject = message => { throw failure(400, message); };

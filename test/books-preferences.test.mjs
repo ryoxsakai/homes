@@ -17,13 +17,13 @@ test('remembers the complete local bookshelf display and filters on the next loa
   const map = new Map();
   const storage = { getItem: key => map.get(key), setItem: (key, value) => map.set(key, value) };
   const expected = {
-    status: 'wanted', query: 'りんご', category: '絵本', location: '本棚', tag: 'お気に入り',
+    status: 'borrowed', query: 'りんご', category: '絵本', location: '本棚', tag: 'お気に入り',
     sort: 'author', view: 'grid', filtersOpen: true,
   };
   writeBooksPreferences(storage, { ...expected, bookData: ['ignored'] });
   assert.deepEqual(readBooksPreferences(storage), expected);
-  writeBooksPreferences(storage, { ...expected, filtersOpen: false });
-  assert.deepEqual(readBooksPreferences(storage), { ...expected, filtersOpen: false });
+  writeBooksPreferences(storage, { ...expected, status: 'wanted', filtersOpen: false });
+  assert.deepEqual(readBooksPreferences(storage), { ...expected, status: 'wanted', filtersOpen: false });
 });
 
 test('bad or unavailable local storage is safe and defaults to a collapsed list toolbar', () => {

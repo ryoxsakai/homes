@@ -6,7 +6,7 @@ const string = (value, limit) => typeof value === 'string' ? value.slice(0, limi
 function normal(saved) {
   const value = saved && typeof saved === 'object' ? saved : {};
   return {
-    status: ['all', 'owned', 'wanted'].includes(value.status) ? value.status : 'all',
+    status: ['all', 'borrowed', 'owned', 'wanted'].includes(value.status) ? value.status : 'all',
     query: string(value.query, 300),
     category: string(value.category, 100),
     location: string(value.location, 100),
