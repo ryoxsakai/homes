@@ -2,7 +2,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { MAX_DOCUMENT_BYTES, cloneTodo, emptyMemo, emptyTodo, failure, migrateLegacy, nextMemo, nextTodo } from './state.mjs';
 import { emptyBooks, nextBooks } from './books.mjs';
 import { readCoverChange } from './books-photos.mjs';
-import { emptyCleaning, emptyGrocery, nextCleaning, nextGrocery } from './household.mjs';
+import { emptyCleaning, emptyGrocery, importCleaning, nextCleaning, nextGrocery } from './household.mjs';
 
 const KINDS = ['todo', 'memo', 'books', 'grocery', 'cleaning'];
 const empty = { todo: emptyTodo, memo: emptyMemo, books: emptyBooks, grocery: emptyGrocery, cleaning: emptyCleaning };
@@ -76,6 +76,7 @@ export class HomesDataStore extends DurableObject {
     return this.#run(() => {
       const value = this.#read(kind);
       if (kind === 'todo') delete value.cloneRequests;
+      delete value.deleted;
       return { value };
     });
   }
@@ -147,7 +148,20 @@ export class HomesDataStore extends DurableObject {
     if (typeof actor !== 'string' || !actor) throw Error('Actor required');
     return this.#run(() => {
       const current = this.#read(kind);
-      return { value: this.#write(kind, nextDocument[kind](current, input, actor), current.revision + 1) };
+      return { value: withoutDeleted(this.#write(kind, nextDocument[kind](current, input, actor), current.revision + 1)) };
     });
   }
+
+  importCleaning(legacy) {
+    return this.#run(() => {
+      const current = this.#read('cleaning');
+      return { value: withoutDeleted(this.#write('cleaning', importCleaning(current, legacy), current.revision + 1)) };
+    });
+  }
+}
+
+// The deleted-item stash stays on the server.
+function withoutDeleted(doc) {
+  const { deleted, ...rest } = doc;
+  return rest;
 }

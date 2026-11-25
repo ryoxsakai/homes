@@ -172,20 +172,27 @@ const categories = categoryManager({
   onChange: () => save(),
 });
 
-// One-time import from the old 掃除チェッカー (its shared Firebase data), only into an empty list.
+// One-time import from the old 掃除チェッカー (its shared Firebase data), only into an
+// empty list. The server does the import, so imported places are never credited to anyone.
 async function importLegacy() {
   const button = $('#import-legacy');
+  if (doc.busy) { toast('保存が終わってからもう一度お試しください'); return; }
   button.disabled = true;
   try {
-    const response = await fetch('/api/cleaning/legacy', { cache: 'no-store', credentials: 'same-origin' });
-    const data = await response.json().catch(() => null);
-    if (!response.ok) throw Error(data?.error || `読み込めませんでした (${response.status})`);
-    if (!data.items.length) { toast('以前の掃除チェッカーに取り込める場所はありませんでした'); return; }
-    if (state.items.length) { toast('すでに場所が登録されているため取り込みませんでした'); return; }
-    if (!confirm(`以前の掃除チェッカーから${data.items.length}か所を取り込みますか？`)) return;
-    for (const name of data.categories) if (!state.categories.includes(name) && state.categories.length < 200) state.categories.push(name);
-    state.items = data.items;
-    save(`${data.items.length}か所を取り込みました`);
+    const call = async init => {
+      const response = await fetch(init ? '/api/cleaning/import' : '/api/cleaning/legacy', { cache: 'no-store', credentials: 'same-origin', ...init });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw Error(data?.error || `読み込めませんでした (${response.status})`);
+      return data;
+    };
+    const preview = await call();
+    if (!preview.items.length) { toast('以前の掃除チェッカーに取り込める場所はありませんでした'); return; }
+    if (!confirm(`以前の掃除チェッカーから${preview.items.length}か所を取り込みますか？`)) return;
+    const saved = await call({ method: 'POST' });
+    doc.adopt(saved);
+    state = { items: saved.items, categories: saved.categories };
+    render();
+    toast(`${saved.items.length}か所を取り込みました`);
   } catch (error) {
     toast(error.message);
   } finally {

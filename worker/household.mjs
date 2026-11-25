@@ -24,6 +24,16 @@ export const emptyCleaning = () => ({
   categories: ['キッチン', 'バスルーム', 'リビング', 'トイレ', 'その他'],
 });
 
+// Deleted items leave their attribution behind for a while, so 元に戻す (which saves
+// the same id again) restores who added, bought or cleaned it instead of crediting
+// the person who pressed undo. The stash is server-only and bounded.
+const DELETED_KEPT = 50;
+function rememberDeleted(current, nextIds, pick) {
+  const gone = [...current.liveItems].filter(i => !nextIds.has(i.id)).map(pick);
+  const kept = (current.deleted ?? []).filter(d => !nextIds.has(d.id) && !gone.some(g => g.id === d.id));
+  return [...kept, ...gone].slice(-DELETED_KEPT);
+}
+
 function checkRevision(current, input, label) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) reject(label + 'の入力形式が不正です');
   if (!Number.isSafeInteger(input.revision) || input.revision < 0) reject('revision is required');
@@ -55,8 +65,9 @@ export function nextGrocery(current, input, actor) {
   checkRevision(current, input, '食料品');
   const state = structuredClone({ toBuy: input.toBuy, purchased: input.purchased, categories: input.categories });
   if (!Array.isArray(state.toBuy) || !Array.isArray(state.purchased)) reject('食料品の入力形式が不正です');
-  const before = new Map([...current.toBuy, ...current.purchased].map(i => [i.id, i]));
-  const wasBought = new Set(current.purchased.map(i => i.id));
+  const deleted = new Map((current.deleted ?? []).map(d => [d.id, d]));
+  const before = new Map([...deleted.values(), ...current.toBuy, ...current.purchased].map(i => [i.id, i]));
+  const wasBought = new Set([...current.purchased.map(i => i.id), ...[...deleted.values()].filter(d => d.bought).map(d => d.id)]);
   for (const item of state.toBuy) {
     if (!item || typeof item !== 'object') continue;
     item.addedBy = before.has(item.id) ? before.get(item.id).addedBy ?? null : actor;
@@ -68,6 +79,10 @@ export function nextGrocery(current, input, actor) {
     item.purchasedBy = wasBought.has(item.id) ? old.purchasedBy ?? null : actor;
   }
   validateGrocery(state);
+  const ids = new Set([...state.toBuy, ...state.purchased].map(i => i.id));
+  const bought = new Set(current.purchased.map(i => i.id));
+  state.deleted = rememberDeleted({ ...current, liveItems: [...current.toBuy, ...current.purchased] }, ids,
+    i => ({ id: i.id, addedBy: i.addedBy ?? null, ...(bought.has(i.id) && { bought: true, purchasedBy: i.purchasedBy ?? null }) }));
   return state;
 }
 
@@ -97,7 +112,7 @@ export function nextCleaning(current, input, actor, now = Date.now()) {
   checkRevision(current, input, '掃除');
   const state = structuredClone({ items: input.items, categories: input.categories });
   if (!Array.isArray(state.items)) reject('掃除の入力形式が不正です');
-  const before = new Map(current.items.map(i => [i.id, i]));
+  const before = new Map([...(current.deleted ?? []), ...current.items].map(i => [i.id, i]));
   for (const item of state.items) {
     if (!item || typeof item !== 'object') continue;
     const old = before.get(item.id);
@@ -118,6 +133,23 @@ export function nextCleaning(current, input, actor, now = Date.now()) {
     item.history = history;
     if (isDay(item.lastCleaned) && item.lastCleaned > addDays(day, 1)) reject('最後に掃除した日は今日以前にしてください');
   }
+  validateCleaning(state);
+  state.deleted = rememberDeleted({ ...current, liveItems: current.items }, new Set(state.items.map(i => i.id)),
+    i => ({ id: i.id, lastCleaned: i.lastCleaned, lastCleanedBy: i.lastCleanedBy ?? null, history: i.history ?? [] }));
+  return state;
+}
+
+// Import from the old app: a separate server operation, so imported places are never
+// credited to the member who imported them. Only into an empty list.
+export function importCleaning(current, legacy) {
+  if (current.items.length) throw failure(409, 'すでに場所が登録されているため取り込めません');
+  if (!legacy.items.length) throw failure(404, '以前の掃除チェッカーに取り込める場所はありませんでした');
+  const categories = [...current.categories];
+  for (const name of legacy.categories) if (!categories.includes(name) && categories.length < 200) categories.push(name);
+  const state = {
+    items: legacy.items.map(i => ({ ...i, lastCleanedBy: null, history: [] })),
+    categories, deleted: current.deleted ?? [],
+  };
   validateCleaning(state);
   return state;
 }

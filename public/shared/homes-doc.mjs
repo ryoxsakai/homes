@@ -81,6 +81,8 @@ export function createDocument(path, { onSaved, render }) {
       });
       render();
     },
+    // Takes a document the server saved by another route (e.g. an import) as current.
+    adopt(saved) { revision = saved.revision; },
     get busy() { return pending > 0 || broken; },
   };
 }
