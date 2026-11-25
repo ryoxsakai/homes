@@ -2,9 +2,11 @@ import { DurableObject } from 'cloudflare:workers';
 import { MAX_DOCUMENT_BYTES, cloneTodo, emptyMemo, emptyTodo, failure, migrateLegacy, nextMemo, nextTodo } from './state.mjs';
 import { emptyBooks, nextBooks } from './books.mjs';
 import { readCoverChange } from './books-photos.mjs';
+import { emptyCleaning, emptyGrocery, nextCleaning, nextGrocery } from './household.mjs';
 
-const KINDS = ['todo', 'memo', 'books'];
-const empty = { todo: emptyTodo, memo: emptyMemo, books: emptyBooks };
+const KINDS = ['todo', 'memo', 'books', 'grocery', 'cleaning'];
+const empty = { todo: emptyTodo, memo: emptyMemo, books: emptyBooks, grocery: emptyGrocery, cleaning: emptyCleaning };
+const nextDocument = { grocery: nextGrocery, cleaning: nextCleaning };
 
 // One household document per service (Works' todo_state / memo_state model),
 // each with a revision for optimistic concurrency. Every operation runs inside a
@@ -136,6 +138,16 @@ export class HomesDataStore extends DurableObject {
         if (b.photoId && !kept.has(b.id)) this.sql.exec('DELETE FROM book_cover_photos WHERE book_id = ?', b.id);
       }
       return { value: this.#write('books', next, current.revision + 1) };
+    });
+  }
+
+  // 食料品 and 掃除: whole-document saves with server-side attribution.
+  putHousehold(kind, input, actor) {
+    if (!Object.hasOwn(nextDocument, kind)) throw Error('Invalid document');
+    if (typeof actor !== 'string' || !actor) throw Error('Actor required');
+    return this.#run(() => {
+      const current = this.#read(kind);
+      return { value: this.#write(kind, nextDocument[kind](current, input, actor), current.revision + 1) };
     });
   }
 }
