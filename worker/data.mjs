@@ -1,6 +1,7 @@
 import { MAX_DOCUMENT_BYTES } from './state.mjs';
 import { fetchCover, lookupBook } from './books.mjs';
 import { MAX_PHOTO_BASE64, PHOTO_ID } from './books-photos.mjs';
+import { fetchLegacyCleaning } from './household.mjs';
 
 const HOUSEHOLD_STORE_NAME = 'homes-data-v1:household';
 const CLONE_REQUEST = /^[a-zA-Z0-9_-]{16,100}$/;
@@ -11,6 +12,7 @@ const jsonBodyType = /^application\/json\s*(?:;\s*charset\s*=\s*(?:"utf-8"|utf-8
 //   GET|PUT /api/todo, GET /api/todo/clone?request_id=…, POST /api/todo/clone
 //   GET|PUT /api/memo
 //   GET|PUT /api/books, GET /api/books/lookup?isbn=…, GET /api/books/cover?id=…
+//   GET|PUT /api/grocery, GET|PUT /api/cleaning, GET /api/cleaning/legacy (preview), POST /api/cleaning/import
 const routes = {
   '/api/me': ['GET'],
   '/api/todo': ['GET', 'PUT'],
@@ -20,6 +22,10 @@ const routes = {
   '/api/books/lookup': ['GET'],
   '/api/books/cover': ['GET'],
   '/api/books/photo': ['GET'],
+  '/api/grocery': ['GET', 'PUT'],
+  '/api/cleaning': ['GET', 'PUT'],
+  '/api/cleaning/legacy': ['GET'],
+  '/api/cleaning/import': ['POST'],
 };
 // The only GET requests that take a query string, each with exactly one parameter.
 const queries = {
@@ -89,10 +95,20 @@ export async function handleHomesData(request, env, member, respond) {
     return found.error ? json(found.error.status, {error: found.error.message,
       ...(found.ndlStatus && { ndlStatus: found.ndlStatus })}) : json(200, found.value);
   }
+  if (pathname === '/api/cleaning/legacy') {
+    const found = await fetchLegacyCleaning();
+    return found.error ? json(found.error.status, {error: found.error.message}) : json(200, found.value);
+  }
   try {
     // This deployment has a single household. Only authenticated members reach this
     // fixed, server-only namespace; neither client nor environment can select a different store.
     const store = env.HOME_STORE.get(env.HOME_STORE.idFromName(HOUSEHOLD_STORE_NAME));
+    if (pathname === '/api/cleaning/import') {
+      const legacy = await fetchLegacyCleaning();
+      if (legacy.error) return json(legacy.error.status, {error: legacy.error.message});
+      const imported = await store.importCleaning(legacy.value);
+      return imported.error ? json([404, 409].includes(imported.error.status) ? imported.error.status : 400, {error: imported.error.message}) : json(200, imported.value);
+    }
     if (pathname === '/api/books/photo') {
       const jpeg = await store.bookCoverPhoto(searchParams.get('id'));
       return jpeg ? respond(200, jpeg, {type:'image/jpeg', cache:'no-store'})
@@ -108,6 +124,7 @@ export async function handleHomesData(request, env, member, respond) {
       if (status !== 200) return error(status, body);
       result = pathname === '/api/memo' ? await store.putMemo(body)
         : pathname === '/api/books' ? await store.putBooks(body, member.alias)
+        : pathname === '/api/grocery' || pathname === '/api/cleaning' ? await store.putHousehold(pathname.slice('/api/'.length), body, member.alias)
         : pathname === '/api/todo' ? await store.putTodo(body, member.alias)
         : await store.cloneTodo(body, member.alias);
     }

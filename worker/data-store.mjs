@@ -2,9 +2,11 @@ import { DurableObject } from 'cloudflare:workers';
 import { MAX_DOCUMENT_BYTES, cloneTodo, emptyMemo, emptyTodo, failure, migrateLegacy, nextMemo, nextTodo } from './state.mjs';
 import { emptyBooks, nextBooks } from './books.mjs';
 import { readCoverChange } from './books-photos.mjs';
+import { emptyCleaning, emptyGrocery, importCleaning, nextCleaning, nextGrocery } from './household.mjs';
 
-const KINDS = ['todo', 'memo', 'books'];
-const empty = { todo: emptyTodo, memo: emptyMemo, books: emptyBooks };
+const KINDS = ['todo', 'memo', 'books', 'grocery', 'cleaning'];
+const empty = { todo: emptyTodo, memo: emptyMemo, books: emptyBooks, grocery: emptyGrocery, cleaning: emptyCleaning };
+const nextDocument = { grocery: nextGrocery, cleaning: nextCleaning };
 
 // One household document per service (Works' todo_state / memo_state model),
 // each with a revision for optimistic concurrency. Every operation runs inside a
@@ -74,6 +76,7 @@ export class HomesDataStore extends DurableObject {
     return this.#run(() => {
       const value = this.#read(kind);
       if (kind === 'todo') delete value.cloneRequests;
+      delete value.deleted;
       return { value };
     });
   }
@@ -138,4 +141,27 @@ export class HomesDataStore extends DurableObject {
       return { value: this.#write('books', next, current.revision + 1) };
     });
   }
+
+  // 食料品 and 掃除: whole-document saves with server-side attribution.
+  putHousehold(kind, input, actor) {
+    if (!Object.hasOwn(nextDocument, kind)) throw Error('Invalid document');
+    if (typeof actor !== 'string' || !actor) throw Error('Actor required');
+    return this.#run(() => {
+      const current = this.#read(kind);
+      return { value: withoutDeleted(this.#write(kind, nextDocument[kind](current, input, actor), current.revision + 1)) };
+    });
+  }
+
+  importCleaning(legacy) {
+    return this.#run(() => {
+      const current = this.#read('cleaning');
+      return { value: withoutDeleted(this.#write('cleaning', importCleaning(current, legacy), current.revision + 1)) };
+    });
+  }
+}
+
+// The deleted-item stash stays on the server.
+function withoutDeleted(doc) {
+  const { deleted, ...rest } = doc;
+  return rest;
 }

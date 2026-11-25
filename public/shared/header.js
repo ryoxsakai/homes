@@ -13,23 +13,31 @@ const ICONS = {
   wiki: '<path d="M2 5h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z"/><path d="M22 5h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"/>',
   todo: '<path d="m9 11 3 3 9-9"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
   memo: '<path d="M15 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z"/><path d="M15 21v-6h6"/>',
+  grocery: '<path d="M4.5 9h15l-1.6 9.6a2 2 0 0 1-2 1.7H8.1a2 2 0 0 1-2-1.7z"/><path d="m8.5 9 3.5-5.5L15.5 9"/><path d="M9.5 13v3.5M14.5 13v3.5"/>',
+  cleaning: '<path d="M11 3.5 12.6 8l4.4 1.6-4.4 1.6L11 15.5 9.4 11.2 5 9.6 9.4 8z"/><path d="m18 14 .8 2.2L21 17l-2.2.8L18 20l-.8-2.2L15 17l2.2-.8z"/>',
   books: '<path d="M5 4h3v16H5z"/><path d="M10 4h3v16h-3z"/><path d="m15 5.2 2.9-.8 3.6 14.6-2.9.8z"/><path d="M3 20h18"/>',
   kdp: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
   ss: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
   menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
 };
-// Each app gets a quiet warm tint so the list scans quickly without shouting.
+// Each app gets a quiet tint of the same lightness and strength, so the sidebar, the
+// mobile service bar and quick add read as one set and each app is told apart by hue.
 const TINTS = {
   home: ["#f6e7dc", "#984324"], todo: ["#f8e4d8", "#a3401c"], memo: ["#fbefd2", "#8a5a00"],
-  books: ["#e6efe0", "#3f6a2e"],
+  grocery: ["#f8e1e4", "#9e3048"], cleaning: ["#dff0ee", "#23675f"], books: ["#e6efe0", "#3f6a2e"],
 };
+// One order everywhere: sidebar, drawer, mobile service bar and quick add.
 const services = [
-  ["/todo/", "todo", "ToDo"], ["/memo/", "memo", "メモ"], ["/books/", "books", "本棚"],
+  ["/todo/", "todo", "ToDo"], ["/memo/", "memo", "メモ"],
+  ["/grocery/", "grocery", "食料品"], ["/cleaning/", "cleaning", "掃除"],
+  ["/books/", "books", "本棚"],
 ].filter(([href]) => isListedServicePath(href));
 const QUICK = [
   ["todo", "/todo/#works-quick=todo", "ToDoを追加", "タイトルと日付だけですぐ登録"],
   ["memo", "/memo/#works-quick=memo", "メモを追加", "思いついたことを書き留める"],
+  ["grocery", "/grocery/#works-quick=grocery", "買うものを追加", "品名だけで買い物リストへ"],
+  ["cleaning", "/cleaning/#works-quick=cleaning", "掃除場所を追加", "場所と頻度を決めて登録"],
   ["books", "/books/#works-quick=books", "本を登録", "バーコードを読み取って本棚に追加"],
 ];
 
@@ -191,11 +199,13 @@ function syncAvatar(user) {
 // Open the target page's own add form once that page has finished loading.
 function runQuickAdd() {
   const kind = new URLSearchParams(location.hash.slice(1)).get("works-quick");
-  const target = { "/todo/": "todo", "/memo/": "memo", "/books/": "books" }[location.pathname];
+  const target = { "/todo/": "todo", "/memo/": "memo", "/grocery/": "grocery", "/cleaning/": "cleaning", "/books/": "books" }[location.pathname];
   if (!kind || kind !== target) return;
   const clearHash = () => history.replaceState(null, "", location.pathname + location.search);
-  const ready = kind === "books"
-    ? () => (document.body.dataset.serviceReady === "true" && typeof window.homesBooksQuickAdd === "function" ? () => window.homesBooksQuickAdd() : null)
+  // Bookshelf, grocery and cleaning pages expose their add action once they have loaded.
+  const hook = { books: "homesBooksQuickAdd", grocery: "homesQuickAdd", cleaning: "homesQuickAdd" }[kind];
+  const ready = hook
+    ? () => (document.body.dataset.serviceReady === "true" && typeof window[hook] === "function" ? () => window[hook]() : null)
     : kind === "todo"
     ? () => { const app = document.getElementById("app"); const button = document.getElementById("new-task"); return app && !app.hidden && button ? () => button.click() : null; }
     : () => (document.querySelector("#login-screen")?.classList.contains("hidden") && typeof window.openMemoModal === "function" ? () => window.openMemoModal(null) : null);

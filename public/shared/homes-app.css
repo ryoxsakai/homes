@@ -1,0 +1,226 @@
+/*
+ * Homes app components shared by 食料品, 掃除 (and the patterns of 本棚): one set of
+ * buttons, segment switches, list panels, dialogs, chips, toasts and the mobile
+ * in-app menu, all built on the Works tokens (--works-*) with the Homes palette.
+ * Measurements match the bookshelf so every Homes app reads as one product.
+ */
+.homes-page {
+  margin: 0;
+  background: var(--works-page);
+  color: var(--works-ink);
+  font: 14px/1.6 var(--works-font);
+}
+.homes-page [hidden] { display: none !important; }
+:where(.homes-page) :where(button, input, select, textarea) { font: inherit; color: inherit; }
+
+.homes-loading { padding: 40px var(--works-gutter, 24px); color: var(--works-ink-2); }
+.homes-main { box-sizing: border-box; max-width: 1200px; padding: 16px var(--works-gutter, 24px) 32px; }
+
+.homes-heading { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 16px; }
+.homes-heading h2 { margin: 0; font-size: 20px; line-height: 1.3; }
+.homes-summary { margin: 2px 0 0; color: var(--works-ink-2); font-size: 13px; }
+.homes-summary strong { color: var(--works-danger); font-weight: 700; }
+.homes-heading-actions { display: flex; gap: 8px; }
+
+/* Buttons */
+.homes-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 44px; padding: 0 16px; border: 1px solid var(--works-line-strong); border-radius: 8px;
+  background: var(--works-surface); color: var(--works-ink); font-weight: 600; cursor: pointer;
+  box-shadow: var(--works-shadow-sm); white-space: nowrap;
+}
+.homes-btn:hover { background: var(--works-hover); }
+.homes-btn:disabled { opacity: .5; cursor: default; }
+.homes-btn-primary { border-color: transparent; background: var(--works-gradient); color: #fff; }
+.homes-btn-primary:hover { background: var(--works-gradient); filter: brightness(1.06); }
+.homes-btn-danger { border-color: transparent; background: transparent; color: var(--works-danger); box-shadow: none; }
+.homes-btn-danger:hover { background: var(--works-danger-soft); }
+.homes-btn-quiet { min-height: 40px; padding-inline: 10px; font-size: 13px; box-shadow: none; }
+.homes-icon-btn {
+  display: inline-grid; place-items: center; flex: none; min-width: 44px; min-height: 44px; padding: 0;
+  border: 0; border-radius: 8px; background: transparent; color: var(--works-ink-2); cursor: pointer;
+}
+.homes-icon-btn:hover:not(:disabled) { background: var(--works-hover); color: var(--works-ink); }
+.homes-icon-btn:disabled { opacity: .35; cursor: default; }
+.homes-link-btn { padding: 0; border: 0; background: none; color: var(--works-accent); font-weight: 600; text-decoration: underline; cursor: pointer; }
+.homes-save-status { margin: 4px 0 0; color: var(--works-ink-2); font-size: 13px; }
+.homes-save-status:empty { margin: 0; }
+
+/* Toolbar: segment switch plus compact selects */
+.homes-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; }
+.homes-toolbar-end { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.homes-segment { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--works-track); }
+.homes-segment button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 38px; padding: 0 14px; border: 0; border-radius: 8px; background: transparent;
+  color: var(--works-ink-2); font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.homes-segment [aria-pressed="true"] { background: var(--works-surface); color: var(--works-ink); box-shadow: var(--works-shadow-sm); }
+.homes-count {
+  min-width: 20px; padding: 0 6px; border-radius: 999px; background: var(--works-surface-sunken);
+  color: var(--works-ink-2); font-size: 11px; line-height: 18px; text-align: center;
+}
+.homes-segment [aria-pressed="true"] .homes-count { background: var(--works-accent-soft); color: var(--works-accent-strong); }
+.homes-page select, .homes-field input, .homes-field textarea, .homes-inline-form input, .homes-manage-add input {
+  box-sizing: border-box; min-height: 44px; padding: 8px 10px; border: 1px solid var(--works-input-line); border-radius: 8px;
+  background: var(--works-surface); font-size: 16px;
+}
+.homes-page select { padding-right: 24px; }
+.homes-toolbar select { min-width: 140px; }
+.homes-toolbar select.is-filtered { border-color: var(--works-accent); background: var(--works-accent-soft); }
+.homes-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Inline add form (fast entry at the top of a list) */
+.homes-inline-form {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, 200px) auto; gap: 8px;
+  margin-top: 12px; padding: 12px; border-radius: 8px; background: var(--works-surface); box-shadow: var(--works-shadow);
+}
+.homes-inline-form :is(input, select) { width: 100%; }
+
+/* List panels and rows */
+.homes-panel { margin: 12px 0 0; padding: 0; overflow: hidden; border-radius: 8px; background: var(--works-surface); box-shadow: var(--works-shadow); list-style: none; }
+.homes-panel > li + li { border-top: 1px solid var(--works-line); }
+.homes-group-title {
+  display: flex; align-items: center; gap: 8px; margin: 16px 0 0; padding: 0 4px;
+  color: var(--works-ink-2); font-size: 12px; font-weight: 700; letter-spacing: .04em;
+}
+.homes-group-title + .homes-panel { margin-top: 6px; }
+.homes-row { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 6px 8px 6px 12px; }
+.homes-row.is-overdue { background: color-mix(in srgb, var(--works-danger-soft) 55%, transparent); }
+.homes-row-main {
+  display: grid; gap: 2px; flex: 1; min-width: 0; padding: 4px 0; border: 0; background: none; text-align: left; cursor: pointer;
+}
+.homes-row-main:focus-visible { outline: 2px solid var(--works-accent); outline-offset: 2px; border-radius: 6px; }
+.homes-row-title { overflow: hidden; font-weight: 700; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.homes-row-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; color: var(--works-ink-2); font-size: 12px; }
+.homes-row-side { display: grid; justify-items: end; gap: 4px; flex: none; min-width: 92px; }
+
+/* Round completion button (bought / cleaned) */
+.homes-check {
+  display: grid; place-items: center; flex: none; width: 44px; height: 44px; padding: 0;
+  border: 0; border-radius: 50%; background: transparent; color: var(--works-input-line); cursor: pointer;
+}
+.homes-check span {
+  display: grid; place-items: center; width: 24px; height: 24px; box-sizing: border-box;
+  border: 2px solid var(--works-input-line); border-radius: 50%; color: transparent;
+}
+.homes-check:hover span, .homes-check:focus-visible span { border-color: var(--works-success); color: var(--works-success); background: var(--works-success-soft); }
+.homes-check-labelled { width: auto; height: 40px; padding: 0 12px 0 8px; gap: 6px; border-radius: 999px; grid-auto-flow: column;
+  background: var(--works-success-soft); color: var(--works-success); font-weight: 700; font-size: 13px; }
+.homes-check-labelled span { width: 20px; height: 20px; border-color: var(--works-success); color: var(--works-success); }
+.homes-check-labelled:hover { filter: brightness(.97); }
+
+/* Chips */
+.homes-chip {
+  display: inline-flex; align-items: center; max-width: 100%; padding: 0 8px; border-radius: 999px;
+  background: var(--works-track); color: var(--works-ink-2); font-size: 11px; line-height: 20px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Due / freshness: labels keep their meaning (overdue red, today amber, ok green). */
+.homes-due { font-size: 12px; font-weight: 700; white-space: nowrap; }
+.homes-due[data-state="over"] { color: var(--works-danger); }
+.homes-due[data-state="today"], .homes-due[data-state="soon"] { color: var(--works-warning); }
+.homes-due[data-state="ok"] { color: var(--works-success); font-weight: 600; }
+.homes-due[data-state="none"] { color: var(--works-ink-2); font-weight: 500; }
+.homes-meter { width: 88px; height: 6px; overflow: hidden; border-radius: 999px; background: var(--works-track); }
+.homes-meter span { display: block; height: 100%; border-radius: inherit; }
+.homes-meter[data-state="ok"] span { background: var(--works-success); }
+.homes-meter[data-state="soon"] span, .homes-meter[data-state="today"] span { background: #d98a1c; }
+.homes-meter[data-state="over"] span { background: var(--works-danger); }
+
+.homes-list-foot { display: flex; justify-content: flex-end; margin-top: 8px; }
+.homes-empty { margin-top: 16px; padding: 36px 16px; border-radius: 8px; background: var(--works-surface); color: var(--works-ink-2); text-align: center; box-shadow: var(--works-shadow); }
+.homes-empty p { margin: 0 0 12px; }
+.homes-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+
+/* Dialogs */
+.homes-dialog {
+  box-sizing: border-box; width: min(480px, calc(100% - 24px)); max-height: calc(100dvh - 24px); padding: 0;
+  border: 0; border-radius: 12px; background: var(--works-surface); color: var(--works-ink); box-shadow: var(--works-shadow-lg);
+}
+.homes-dialog > form { display: contents; }
+.homes-dialog-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 8px 20px; border-bottom: 1px solid var(--works-line); background: var(--works-surface); }
+.homes-dialog-head h3 { margin: 0; font-size: 17px; }
+.homes-dialog-body { display: grid; gap: 12px; padding: 16px 20px 20px; }
+.homes-dialog-foot { position: sticky; bottom: 0; display: flex; align-items: center; gap: 8px; padding: 12px 20px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--works-line); background: var(--works-surface); }
+.homes-spacer { flex: 1; }
+.homes-field-group { display: grid; gap: 12px; }
+.homes-field { display: grid; gap: 4px; min-width: 0; }
+.homes-field > span { color: var(--works-ink-2); font-size: 12px; font-weight: 600; }
+.homes-field em { margin-left: 6px; color: var(--works-danger); font-size: 11px; font-style: normal; }
+.homes-field input, .homes-field select, .homes-field textarea { width: 100%; }
+.homes-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.homes-field-inline { display: flex; align-items: center; gap: 8px; }
+.homes-field-inline input { flex: 1; min-width: 0; }
+.homes-stepper { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; gap: 6px; }
+.homes-stepper input { text-align: center; }
+.homes-stepper button { min-height: 44px; border: 1px solid var(--works-line-strong); border-radius: 8px; background: var(--works-surface-sunken); font-size: 18px; font-weight: 700; cursor: pointer; }
+.homes-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.homes-presets button { min-height: 32px; padding: 0 10px; border: 1px solid var(--works-line-strong); border-radius: 999px; background: var(--works-surface); font-size: 12px; cursor: pointer; }
+.homes-presets button:hover { background: var(--works-hover); }
+.homes-meta { margin: 0; color: var(--works-ink-2); font-size: 12px; }
+.homes-meta:empty { display: none; }
+
+/* Category manager */
+.homes-manage h4 { margin: 0 0 6px; font-size: 14px; }
+.homes-manage-list { margin: 0; padding: 0; list-style: none; border-radius: 8px; background: var(--works-surface-sunken); }
+.homes-manage-list li { display: flex; align-items: center; padding-left: 12px; }
+.homes-manage-list li + li { border-top: 1px solid var(--works-line); }
+.homes-manage-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.homes-manage-name small { margin-left: 8px; color: var(--works-ink-2); }
+.homes-manage-empty { min-height: 44px; color: var(--works-ink-2); }
+.homes-manage-add { display: flex; gap: 8px; margin-top: 8px; }
+.homes-manage-add input { flex: 1; min-width: 0; }
+.homes-hint { margin: 0; color: var(--works-ink-2); font-size: 12px; }
+
+.homes-toast {
+  position: fixed; z-index: 60; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  display: flex; align-items: center; gap: 12px; max-width: calc(100% - 32px); box-sizing: border-box;
+  padding: 10px 16px; border-radius: 10px; background: #2c211c; color: #fff;
+  box-shadow: var(--works-shadow-lg); font-size: 13px;
+}
+.homes-toast button { min-height: 32px; padding: 0 4px; border: 0; background: none; color: #ffc9b3; font-weight: 700; text-decoration: underline; cursor: pointer; }
+@media (min-width: 731px) { .homes-toast { bottom: 24px; } }
+
+/* Mobile in-app menu: [list] [secondary] [+ add], above the service bar — same as 本棚. */
+.homes-bottom-menu { display: none; }
+@media (max-width: 730px) {
+  .homes-main { padding: 10px 16px 76px; }
+  .homes-heading h2 { font-size: 17px; }
+  .homes-heading-actions { display: none; }
+  .homes-toolbar { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .homes-toolbar-end { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-left: 0; }
+  .homes-toolbar select { width: 100%; min-width: 0; font-size: 14px; }
+  .homes-segment { display: flex; }
+  .homes-segment button { flex: 1; padding: 0 8px; }
+  .homes-inline-form { grid-template-columns: minmax(0, 1fr) auto; }
+  .homes-inline-form select { grid-column: 1 / -1; grid-row: 2; }
+  .homes-panel { margin-inline: -16px; border-radius: 0; }
+  .homes-group-title { padding: 0; }
+  .homes-row-side { min-width: 0; }
+  .homes-meter { width: 64px; }
+  .homes-row { gap: 6px; padding-left: 16px; padding-right: 4px; }
+  .homes-check-labelled { width: 44px; height: 44px; padding: 0; border-radius: 50%; font-size: 0; }
+  .homes-check-labelled span { width: 24px; height: 24px; }
+  .homes-bottom-menu {
+    position: fixed; z-index: 35; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom));
+    transform: translateX(-50%); display: flex; width: min(calc(100% - 32px), 352px);
+    padding: 3px 5px; box-sizing: border-box; gap: 4px; border-radius: 16px;
+    background: var(--works-surface); box-shadow: var(--works-shadow-lg);
+  }
+  body.works-shell .homes-bottom-menu { bottom: calc(72px + env(safe-area-inset-bottom)); }
+  body:has(.works-navigation[open], dialog[open]) .homes-bottom-menu { display: none; }
+  .homes-bottom-menu button {
+    position: relative; display: grid; place-items: center; flex: 1 1 0; min-width: 0; min-height: 44px;
+    border: 0; border-radius: 12px; background: transparent; color: var(--works-ink-2); cursor: pointer;
+  }
+  .homes-bottom-menu button:is([aria-current="page"], [aria-pressed="true"]) { background: var(--works-ink); color: var(--works-surface); }
+  .homes-bottom-menu .homes-menu-add { background: var(--works-accent-soft); color: var(--works-accent-strong); }
+  .homes-bottom-menu button:focus-visible { outline: 2px solid var(--works-accent); outline-offset: -2px; }
+  .homes-dialog { width: 100%; max-width: 100%; max-height: 100dvh; height: 100dvh; margin: 0; border-radius: 0; }
+  .homes-toast { bottom: calc(136px + env(safe-area-inset-bottom)); }
+}
+@media (max-width: 360px) {
+  .homes-field-row { grid-template-columns: 1fr; }
+}
