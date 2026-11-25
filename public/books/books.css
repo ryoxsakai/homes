@@ -190,8 +190,8 @@
 .books-isbn-row { display: flex; gap: 8px; }
 .books-isbn-row input { flex: 1; min-width: 0; letter-spacing: .04em; }
 #manual-entry { margin-top: 12px; min-height: 44px; }
-.books-registration-switch { display: flex; width: fit-content; max-width: 100%; }
-.books-registration-switch button { min-height: 44px; white-space: normal; }
+.books-registration-switch { display: flex; width: 100%; box-sizing: border-box; }
+.books-registration-switch button { flex: 1; min-height: 44px; white-space: normal; }
 #title-search-form { grid-template-columns: minmax(0, 1fr); margin-top: 12px; padding-top: 0; border-top: 0; }
 #title-search-status:empty { display: none; }
 .books-title-results { list-style: none; display: grid; gap: 6px; padding: 0; margin: 8px 0 0; }
