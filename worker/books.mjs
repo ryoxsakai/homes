@@ -106,12 +106,20 @@ const clip = (v, max) => typeof v === 'string' ? v.trim().slice(0, max) : '';
 export async function lookupBook(rawIsbn, env, upstream = fetch) {
   const isbn = normalizeIsbn(rawIsbn);
   if (!isbn) return { error: { status: 400, message: 'ISBNを確認してください' } };
+  const google = await lookupGoogleBook(isbn, env, upstream);
+  if (google.value?.found) return google;
+  const ndl = await lookupNdlBook(isbn, upstream);
+  return ndl ? { value: ndl } : google;
+}
+
+async function lookupGoogleBook(isbn, env, upstream) {
   const key = typeof env.GOOGLE_BOOKS_API_KEY === 'string' ? env.GOOGLE_BOOKS_API_KEY.trim() : '';
   let response;
   try {
     response = await upstream(lookupURL(isbn), {
       // The key travels in a header, so it is not part of the URL, the edge cache key or logs.
       headers: { Accept: 'application/json', ...(key && { 'X-Goog-Api-Key': key }) },
+      signal: AbortSignal.timeout(5000),
       // Cache successful answers only; a refusal must not stick after the key is fixed.
       cf: { cacheEverything: true, cacheTtlByStatus: { '200-299': 86400, '300-599': 0 } },
     });
@@ -127,7 +135,7 @@ export async function lookupBook(rawIsbn, env, upstream = fetch) {
   try { data = await response.json(); } catch { return { error: { status: 503, message: 'Google Booksの応答を読めませんでした' } }; }
   const items = Array.isArray(data?.items) ? data.items : [];
   // Prefer the volume that really carries this ISBN; full-text matches can be other books.
-  const item = items.find(i => i?.volumeInfo?.industryIdentifiers?.some?.(x => normalizeIsbn(String(x?.identifier ?? '')) === isbn)) || items[0];
+  const item = items.find(i => i?.volumeInfo?.industryIdentifiers?.some?.(x => normalizeIsbn(String(x?.identifier ?? '')) === isbn));
   const info = item?.volumeInfo;
   if (!info || !clip(info.title, 300)) return { value: { found: false, isbn } };
   const title = [clip(info.title, 300), clip(info.subtitle, 200)].filter(Boolean).join(' ').slice(0, 300);
@@ -141,6 +149,64 @@ export async function lookupBook(rawIsbn, env, upstream = fetch) {
       hasCover: VOLUME_ID.test(item.id) && typeof info.imageLinks?.thumbnail === 'string',
     },
   };
+}
+
+// NDL Search OpenSearch RSS. Only accept NDL's own catalogue records and an
+// exact ISBN (older records can contain the ISBN-10 spelling in both fields).
+const NDL_RECORD = /^https:\/\/ndlsearch\.ndl\.go\.jp\/books\/R100000002-I[0-9]+$/;
+const NDL_MAX_BYTES = 256_000;
+const xmlEntities = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+const xmlText = raw => raw.replace(/&(#x[\da-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (entity, value) => {
+  if (value in xmlEntities) return xmlEntities[value];
+  if (value[0] !== '#') return entity;
+  const n = value[1].toLowerCase() === 'x' ? parseInt(value.slice(2), 16) : Number(value.slice(1));
+  return n > 0 && n <= 0x10ffff && !(n >= 0xd800 && n <= 0xdfff) ? String.fromCodePoint(n) : entity;
+});
+
+async function readNdlRss(response) {
+  if (!response.body || !/xml/i.test(response.headers.get('content-type') ?? '')) return '';
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let size = 0, rss = '';
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) return rss + decoder.decode();
+      size += value.byteLength;
+      if (size > NDL_MAX_BYTES) { await reader.cancel(); return ''; }
+      rss += decoder.decode(value, { stream: true });
+    }
+  } finally { reader.releaseLock(); }
+}
+
+async function lookupNdlBook(isbn, upstream) {
+  const url = new URL('https://ndlsearch.ndl.go.jp/api/opensearch');
+  url.searchParams.set('isbn', isbn);
+  try {
+    const response = await upstream(url, {
+      headers: { Accept: 'application/rss+xml, application/xml, text/xml' },
+      redirect: 'error', signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok) return null;
+    const rss = await readNdlRss(response);
+    if (/<!DOCTYPE|<!ENTITY/i.test(rss)) return null;
+    for (const [, record] of rss.replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, '').matchAll(/<item\b[^>]*>([\s\S]*?)<\/item>/g)) {
+      const link = xmlText(record.match(/<link>([^<]*)<\/link>/)?.[1] ?? '').trim();
+      if (!NDL_RECORD.test(link)) continue;
+      const ids = [...record.matchAll(/<dc:identifier\b([^>]*)>([^<]*)<\/dc:identifier>/g)];
+      if (!ids.some(([, attrs, id]) => /\bxsi:type=["']dcndl:ISBN(?:13)?["']/.test(attrs) &&
+          normalizeIsbn(xmlText(id)) === isbn)) continue;
+      const read = (tag, size) => clip(xmlText(record.match(new RegExp('<' + tag + '(?:\\s[^>]*)?>([^<]*)</' + tag + '>'))?.[1] ?? ''), size);
+      const title = read('dc:title', 300) || read('title', 300);
+      if (!title) continue;
+      const authors = [...record.matchAll(/<dc:creator(?:\s[^>]*)?>([^<]*)<\/dc:creator>/g)]
+        .map(([, s]) => clip(xmlText(s), 200)).filter(Boolean).slice(0, 20);
+      const date = read('dcterms:issued', 20) || read('dc:date', 20);
+      return { found: true, isbn, title, authors, publisher: read('dc:publisher', 200),
+        publishedDate: date.replace(/\./g, '-'), volumeId: '', hasCover: false, source: 'ndl' };
+    }
+  } catch { /* Keep Google's original result if this optional provider is unavailable. */ }
+  return null;
 }
 
 const MAX_COVER_BYTES = 1_000_000;

@@ -271,10 +271,13 @@ async function lookup(raw) {
     const found = await api(`/api/books/lookup?isbn=${isbn}`);
     if (!current()) return;
     $('#add-dialog').close();
-    if (found.found) editor.open(null, found);
+    if (found.found) {
+      editor.open(null, found);
+      if (found.source === 'ndl') toast('国立国会図書館サーチから書誌情報を入力しました');
+    }
     else {
       editor.open(null, { isbn });
-      toast('Google Booksに見つからなかったため、手入力してください');
+      toast('書誌情報が見つからなかったため、手入力してください');
     }
   } catch (error) {
     if (!current()) return;
