@@ -1,6 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { MAX_DOCUMENT_BYTES, cloneTodo, emptyMemo, emptyTodo, failure, migrateLegacy, nextMemo, nextTodo } from './state.mjs';
 import { emptyBooks, nextBooks } from './books.mjs';
+import { readCoverChange } from './books-photos.mjs';
 
 const KINDS = ['todo', 'memo', 'books'];
 const empty = { todo: emptyTodo, memo: emptyMemo, books: emptyBooks };
@@ -29,6 +30,7 @@ export class HomesDataStore extends DurableObject {
       created_at TEXT NOT NULL, updated_at TEXT NOT NULL, version INTEGER NOT NULL
     )`);
     this.sql.exec('CREATE TABLE IF NOT EXISTS documents (kind TEXT PRIMARY KEY, data TEXT NOT NULL, revision INTEGER NOT NULL)');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS book_cover_photos (book_id TEXT PRIMARY KEY, token TEXT NOT NULL UNIQUE, jpeg BLOB NOT NULL)');
   }
 
   #ensureMigrated() {
@@ -107,11 +109,33 @@ export class HomesDataStore extends DurableObject {
     });
   }
 
+  bookCoverPhoto(token) {
+    const found = this.sql.exec('SELECT jpeg FROM book_cover_photos WHERE token = ?', token).toArray()[0];
+    return found?.jpeg ?? null;
+  }
+
   putBooks(input, actor) {
     if (typeof actor !== 'string' || !actor) throw Error('Actor required');
     return this.#run(() => {
       const current = this.#read('books');
-      return { value: this.#write('books', nextBooks(current, input, actor), current.revision + 1) };
+      const next = nextBooks(current, input, actor);
+      const cover = readCoverChange(input.coverChange, next.books);
+      if (cover) {
+        const book = next.books.find(b => b.id === cover.id);
+        if (cover.bytes) {
+          const token = crypto.randomUUID();
+          this.sql.exec('INSERT INTO book_cover_photos VALUES (?, ?, ?) ON CONFLICT(book_id) DO UPDATE SET token = excluded.token, jpeg = excluded.jpeg', cover.id, token, cover.bytes);
+          book.photoId = token;
+        } else {
+          this.sql.exec('DELETE FROM book_cover_photos WHERE book_id = ?', cover.id);
+          delete book.photoId;
+        }
+      }
+      const kept = new Set(next.books.map(b => b.id));
+      for (const b of current.books) {
+        if (b.photoId && !kept.has(b.id)) this.sql.exec('DELETE FROM book_cover_photos WHERE book_id = ?', b.id);
+      }
+      return { value: this.#write('books', next, current.revision + 1) };
     });
   }
 }

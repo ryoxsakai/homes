@@ -110,6 +110,8 @@
   border-radius: 6px; background: var(--works-track); box-shadow: var(--works-shadow);
 }
 .books-card:hover .books-cover { box-shadow: var(--works-shadow-lg); }
+.books-cover-img:not([hidden]) + .books-cover-blank { display: none; }
+.books-cover-img[hidden] { display: none; }
 .books-cover-img { width: 100%; height: 100%; object-fit: cover; }
 .books-cover-blank {
   display: grid; place-items: center; box-sizing: border-box; width: 100%; height: 100%; padding: 12px;
@@ -195,7 +197,9 @@
 
 /* Edit form */
 .books-edit { display: grid; grid-template-columns: 160px 1fr; gap: 20px; }
-.books-edit-cover { display: grid; align-content: start; gap: 8px; }
+.books-edit-cover, .books-cover-preview, .books-cover-actions { display: grid; align-content: start; gap: 8px; }
+.books-cover-actions .books-btn { min-height: 42px; white-space: normal; }
+.books-cover-status { margin: 0; font-size: .78rem; line-height: 1.5; overflow-wrap: anywhere; }
 .books-cover-large .books-cover-blank { font-size: 14px; }
 .books-isbn { color: var(--works-ink-2); font-size: 12px; text-align: center; letter-spacing: .03em; }
 .books-edit-fields { display: grid; gap: 12px; min-width: 0; }
@@ -282,7 +286,7 @@
   .books-list { margin-inline: -16px; border-radius: 0; }
   .books-dialog, .books-dialog-wide { width: 100%; max-width: 100%; max-height: 100dvh; height: 100dvh; margin: 0; border-radius: 0; }
   .books-edit { grid-template-columns: 1fr; gap: 12px; }
-  .books-edit-cover { grid-template-columns: 96px 1fr; align-items: end; }
+  .books-edit-cover { grid-template-columns: 96px minmax(0, 1fr); align-items: start; }
   .books-isbn { text-align: left; }
 }
 @media (max-width: 360px) {

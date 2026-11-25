@@ -1,5 +1,6 @@
 import { MAX_DOCUMENT_BYTES } from './state.mjs';
 import { fetchCover, lookupBook } from './books.mjs';
+import { MAX_PHOTO_BASE64, PHOTO_ID } from './books-photos.mjs';
 
 const HOUSEHOLD_STORE_NAME = 'homes-data-v1:household';
 const CLONE_REQUEST = /^[a-zA-Z0-9_-]{16,100}$/;
@@ -18,12 +19,14 @@ const routes = {
   '/api/books': ['GET', 'PUT'],
   '/api/books/lookup': ['GET'],
   '/api/books/cover': ['GET'],
+  '/api/books/photo': ['GET'],
 };
 // The only GET requests that take a query string, each with exactly one parameter.
 const queries = {
   '/api/todo/clone': ['request_id', v => CLONE_REQUEST.test(v)],
   '/api/books/lookup': ['isbn', v => /^[0-9Xx -]{10,17}$/.test(v)],
   '/api/books/cover': ['id', v => /^[A-Za-z0-9_-]{4,40}$/.test(v)],
+  '/api/books/photo': ['id', v => PHOTO_ID.test(v)],
 };
 
 export async function readBoundedJson(request, limit = MAX_DOCUMENT_BYTES) {
@@ -90,13 +93,18 @@ export async function handleHomesData(request, env, member, respond) {
     // This deployment has a single household. Only authenticated members reach this
     // fixed, server-only namespace; neither client nor environment can select a different store.
     const store = env.HOME_STORE.get(env.HOME_STORE.idFromName(HOUSEHOLD_STORE_NAME));
+    if (pathname === '/api/books/photo') {
+      const jpeg = await store.bookCoverPhoto(searchParams.get('id'));
+      return jpeg ? respond(200, jpeg, {type:'image/jpeg', cache:'no-store'})
+        : respond(404, null, {type:'text/plain; charset=utf-8'});
+    }
     let result;
     if (method === 'GET') {
       result = cloneLookup ? await store.cloneResult(searchParams.get('request_id'))
         : await store.read(pathname.slice('/api/'.length));
       if (pathname === '/api/todo' && result.value) result.value.plannerVersion = 1;
     } else {
-      const [status, body] = await readBoundedJson(request);
+      const [status, body] = await readBoundedJson(request, pathname === '/api/books' ? MAX_DOCUMENT_BYTES + MAX_PHOTO_BASE64 + 512 : MAX_DOCUMENT_BYTES);
       if (status !== 200) return error(status, body);
       result = pathname === '/api/memo' ? await store.putMemo(body)
         : pathname === '/api/books' ? await store.putBooks(body, member.alias)

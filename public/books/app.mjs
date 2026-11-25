@@ -3,6 +3,7 @@
 import { watchAuth, signOutUser } from '../shared/auth.js?v=14';
 import { normalizeIsbn } from './isbn.mjs';
 import { readBooksPreferences, writeBooksPreferences } from './preferences.mjs';
+import { prepareCoverPhoto } from './cover-photo.mjs';
 import { cameraAvailable, startScanner } from './scanner.mjs?v=1';
 
 const $ = selector => document.querySelector(selector);
@@ -23,7 +24,8 @@ function localStorageSafe() { try { return window.localStorage; } catch { return
 const rememberPrefs = () => writeBooksPreferences(localStorageSafe(), ui);
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const coverURL = book => book.hasCover && book.volumeId ? `/api/books/cover?id=${encodeURIComponent(book.volumeId)}` : '';
+const coverURL = book => book.photoId ? `/api/books/photo?id=${encodeURIComponent(book.photoId)}`
+  : book.hasCover && book.volumeId ? `/api/books/cover?id=${encodeURIComponent(book.volumeId)}` : '';
 
 function toast(message) {
   const box = $('#toast');
@@ -41,7 +43,7 @@ async function api(path, init) {
   const response = await fetch(path, { cache: 'no-store', credentials: 'same-origin', ...init });
   let body = null;
   try { body = await response.json(); } catch {}
-  if (!response.ok) throw Object.assign(Error(body?.error || `通信に失敗しました (${response.status})`), { status: response.status });
+  if (!response.ok) throw Object.assign(Error(body?.error || `通信に失敗しました (${response.status})`), { status: response.status, ndlStatus: body?.ndlStatus });
   return body;
 }
 
@@ -52,7 +54,7 @@ async function load() {
 }
 
 // Saves the whole shelf after each change, one request at a time.
-function save(message) {
+function save(message, coverChange) {
   const snapshot = structuredClone(shelf);
   pending++;
   $('#save-status').textContent = '保存中…';
@@ -61,12 +63,18 @@ function save(message) {
     try {
       const saved = await api('/api/books', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...snapshot, revision }),
+        body: JSON.stringify({ ...snapshot, revision, ...(coverChange ? { coverChange } : {}) }),
       });
       revision = saved.revision;
       // Keep server-decided fields (who registered) without disturbing newer local edits.
       const byId = new Map(saved.books.map(b => [b.id, b]));
-      for (const book of shelf.books) if (byId.has(book.id)) book.createdBy = byId.get(book.id).createdBy;
+      for (const book of shelf.books) {
+        if (!byId.has(book.id)) continue;
+        const persisted = byId.get(book.id);
+        book.createdBy = persisted.createdBy;
+        if (persisted.photoId) book.photoId = persisted.photoId;
+        else delete book.photoId;
+      }
       if (message) toast(message);
     } catch (error) {
       broken = true;
@@ -129,12 +137,15 @@ function fillSelect(select, items, current, { name, none }) {
   return select.value;
 }
 
-function coverMarkup(book, size = '') {
-  const url = coverURL(book);
-  return url
-    ? `<img class="books-cover-img" src="${url}" alt="" loading="lazy" decoding="async">`
-    : `<span class="books-cover-blank ${size}" aria-hidden="true">${esc(book.title.slice(0, 24))}</span>`;
+function coverMarkup(book, size = '', preview = '') {
+  const url = preview || coverURL(book);
+  const image = url ? `<img class="books-cover-img" src="${esc(url)}" alt="" loading="${size ? 'eager' : 'lazy'}" decoding="async">` : '';
+  return image + `<span class="books-cover-blank ${size}" aria-hidden="true">${esc(book.title.slice(0, 24))}</span>`;
 }
+document.addEventListener('error', event => {
+  if (event.target instanceof HTMLImageElement && event.target.classList.contains('books-cover-img'))
+    event.target.hidden = true;
+}, true);
 
 function render() {
   const owned = shelf.books.filter(b => b.status === 'owned').length;
@@ -283,7 +294,12 @@ async function lookup(raw) {
     }
   } catch (error) {
     if (!current()) return;
-    setScanMessage(`${error.message}。`, 'error');
+    const ndl = error.ndlStatus;
+    const ndlReason = /^http-\d{3}$/.test(ndl || '') ? `HTTP ${ndl.slice(5)}`
+      : ({ timeout: '応答なし', 'request-failed': '通信エラー', 'no-exact-match': '該当なし' })[ndl] || '';
+    const message = error.message.replace(/。$/, '') + '。' +
+      (ndlReason ? `国立国会図書館サーチも取得できませんでした（${ndlReason}）。` : '');
+    setScanMessage(message, 'error');
     if (error.status === 503) {
       // The family can still register the book by hand.
       const manual = document.createElement('button');
@@ -307,6 +323,9 @@ const editor = (() => {
   let draft = null;     // Looked-up or blank values for a new book.
   let tags = [];
   let initial = '';
+  let photo = undefined; // unchanged; null means remove, object means replace.
+  let photoGeneration = 0;
+  let preparingPhoto = false;
 
   const values = () => ({
     status: form.status.value, title: form.title.value, authors: form.authors.value,
@@ -356,8 +375,12 @@ const editor = (() => {
     tags = [...(book?.tags || [])];
     $('#tag-entry').value = '';
     renderTags();
-    $('#edit-cover').innerHTML = `<span class="books-cover books-cover-large">${coverMarkup(src, 'large')}</span>` +
-      (src.isbn ? `<span class="books-isbn">ISBN ${esc(src.isbn)}</span>` : '<span class="books-isbn">ISBNなし</span>');
+    photoGeneration++;
+    photo = undefined;
+    preparingPhoto = false;
+    $('#save-book').disabled = false;
+    $('#cover-status').textContent = '';
+    renderCover();
     $('#book-meta').textContent = book
       ? [`登録 ${new Date(book.createdAt).toLocaleDateString('ja-JP')}`, book.createdBy && `${book.createdBy}が登録`].filter(Boolean).join('・')
       : '';
@@ -365,6 +388,58 @@ const editor = (() => {
     if (!dialog.open) openDialog(dialog);
     (book ? form.querySelector('[name=status]:checked') : form.title.value ? form.location : form.title).focus();
   }
+
+  function renderCover() {
+    const src = current || draft;
+    const visible = photo === undefined ? src : { ...src, photoId: undefined };
+    $('#edit-cover').innerHTML = `<span class="books-cover books-cover-large">${coverMarkup(visible, 'large', photo?.dataURL)}</span>` +
+      (src.isbn ? `<span class="books-isbn">ISBN ${esc(src.isbn)}</span>` : '<span class="books-isbn">ISBNなし</span>');
+    $('#remove-cover').hidden = !(photo || (photo === undefined && src.photoId));
+  }
+
+  for (const button of dialog.querySelectorAll('[data-cover-input]'))
+    button.addEventListener('click', () => document.getElementById(button.dataset.coverInput).click());
+
+  for (const input of [$('#pick-cover'), $('#capture-cover')]) {
+    input.addEventListener('change', async () => {
+      const file = input.files?.[0];
+      input.value = '';
+      if (!file) return;
+      const generation = ++photoGeneration;
+      preparingPhoto = true;
+      $('#save-book').disabled = true;
+      $('#cover-status').textContent = '写真を準備しています…';
+      try {
+        const prepared = await prepareCoverPhoto(file);
+        if (generation !== photoGeneration || !dialog.open) return;
+        photo = prepared;
+        renderCover();
+        $('#cover-status').textContent = '本を保存すると写真も保存されます。';
+      } catch (error) {
+        if (generation === photoGeneration && dialog.open) $('#cover-status').textContent = error.message;
+      } finally {
+        if (generation === photoGeneration && dialog.open) {
+          preparingPhoto = false;
+          $('#save-book').disabled = false;
+        }
+      }
+    });
+  }
+  $('#remove-cover').addEventListener('click', () => {
+    photoGeneration++;
+    preparingPhoto = false;
+    $('#save-book').disabled = false;
+    photo = current?.photoId ? null : undefined;
+    renderCover();
+    $('#cover-status').textContent = current?.photoId ? '本を保存すると写真を外します。' : '';
+  });
+  dialog.addEventListener('close', () => {
+    if (dialog.open) return;
+    photoGeneration++;
+    photo = undefined;
+    preparingPhoto = false;
+    $('#edit-cover').replaceChildren();
+  });
 
   // "＋ 新しい場所…" adds an entry to the shelf's list on the spot.
   for (const [select, kind, label] of [[form.location, 'locations', '場所'], [form.category, 'categories', 'カテゴリ']]) {
@@ -395,6 +470,7 @@ const editor = (() => {
 
   form.addEventListener('submit', event => {
     event.preventDefault();
+    if (preparingPhoto) return;
     if ($('#tag-entry').value.trim()) { addTag($('#tag-entry').value); $('#tag-entry').value = ''; }
     const v = values();
     const title = v.title.trim();
@@ -407,12 +483,14 @@ const editor = (() => {
       location: v.location === NEW_OPTION ? '' : v.location, category: v.category === NEW_OPTION ? '' : v.category,
       tags: v.tags, memo: v.memo.slice(0, 5000), updatedAt: now,
     };
+    const id = current?.id || crypto.randomUUID();
+    const photoChange = photo === undefined ? undefined : { id, jpeg: photo?.jpeg ?? null };
     if (current) {
       Object.assign(current, fields);
-      save('保存しました');
+      save('保存しました', photoChange);
     } else {
-      shelf.books.push({ id: crypto.randomUUID(), ...draft, ...fields, createdAt: now, createdBy: null });
-      save(fields.status === 'wanted' ? '欲しい本に追加しました' : '本棚に登録しました');
+      shelf.books.push({ id, ...draft, ...fields, createdAt: now, createdBy: null });
+      save(fields.status === 'wanted' ? '欲しい本に追加しました' : '本棚に登録しました', photoChange);
     }
     initial = JSON.stringify(values());
     dialog.close();
@@ -426,7 +504,7 @@ const editor = (() => {
     save('削除しました');
   });
 
-  return { open, dirty: () => dialog.open && JSON.stringify(values()) !== initial };
+  return { open, dirty: () => dialog.open && (preparingPhoto || photo !== undefined || JSON.stringify(values()) !== initial) };
 })();
 
 // ─── Categories and locations ────────────────────────────────────────

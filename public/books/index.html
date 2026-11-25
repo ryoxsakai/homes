@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="/shared/works-design.css?v=4">
   <link rel="stylesheet" href="/shared/works-dialogs.css?v=fb98327c">
   <link rel="stylesheet" href="/shared/homes-theme.css?v=1">
-  <link rel="stylesheet" href="/books/books.css?v=compact-1">
+  <link rel="stylesheet" href="/books/books.css?v=photos-1">
 </head>
 <body class="books-page">
   <header class="page-header works-header">
@@ -158,7 +158,17 @@
         </button>
       </div>
       <div class="books-dialog-body books-edit">
-        <div class="books-edit-cover" id="edit-cover"></div>
+        <div class="books-edit-cover">
+          <div class="books-cover-preview" id="edit-cover"></div>
+          <div class="books-cover-actions" aria-label="表紙写真">
+            <input id="pick-cover" type="file" accept="image/*" hidden>
+            <input id="capture-cover" type="file" accept="image/*" capture="environment" hidden>
+            <button class="books-btn" type="button" data-cover-input="pick-cover">写真を選ぶ</button>
+            <button class="books-btn" type="button" data-cover-input="capture-cover">表紙を撮影</button>
+            <button class="books-btn books-cover-remove" id="remove-cover" type="button" hidden>写真を外す</button>
+            <p class="books-cover-status" id="cover-status" role="status"></p>
+          </div>
+        </div>
         <div class="books-edit-fields">
           <fieldset class="books-owned-toggle">
             <legend>所有状況</legend>
@@ -221,6 +231,6 @@
 
   <div id="toast" class="books-toast" role="status" aria-live="polite" hidden></div>
 
-  <script type="module" src="/shared/service-entry.mjs?v=6" data-service-app="/books/app.mjs?v=compact-1"></script>
+  <script type="module" src="/shared/service-entry.mjs?v=6" data-service-app="/books/app.mjs?v=photos-1"></script>
 </body>
 </html>

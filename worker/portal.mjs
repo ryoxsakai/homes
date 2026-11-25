@@ -31,7 +31,9 @@ export async function portalResponse(request, url, member, assets, respond) {
   const asset = await assets.fetch(new Request(new URL(url.pathname, url.origin), { method: 'GET' }));
   if (asset.status !== 200) return respond(404);
   const type = asset.headers.get('Content-Type') || 'application/octet-stream';
+  const csp = url.pathname === '/books/' || url.pathname === '/books/index.html'
+    ? appCsp.replace("img-src 'self' data:;", "img-src 'self' data: blob:;") : appCsp;
   return type.startsWith('text/html')
-    ? respond(200, asset.body, { type, referrer: 'same-origin', csp: appCsp })
+    ? respond(200, asset.body, { type, referrer: 'same-origin', csp })
     : respond(200, asset.body, { type });
 }
