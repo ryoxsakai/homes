@@ -129,7 +129,7 @@ test('bookshelf API: document, lookup and cover routes on the signed-in origin',
   const realFetch = globalThis.fetch;
   globalThis.fetch = async url => String(url).startsWith('https://books.google.com/')
     ? new Response(new Uint8Array([9]), { headers: { 'Content-Type': 'image/png' } })
-    : Response.json({ items: [{ id: 'gurigura1', volumeInfo: { title: 'ぐりとぐら' } }] });
+    : Response.json({ items: [{ id: 'gurigura1', volumeInfo: { title: 'ぐりとぐら', industryIdentifiers: [{ type: 'ISBN_13', identifier: '9784834000825' }] } }] });
   try {
     const lookup = await f.call('/api/books/lookup?isbn=9784834000825');
     assert.equal(lookup.status, 200);
@@ -142,4 +142,40 @@ test('bookshelf API: document, lookup and cover routes on the signed-in origin',
 
   const anonymous = await createApp().fetch(new Request(origin + '/api/books/cover?id=gurigura1'), {});
   assert.notEqual(anonymous.status, 200);
+});
+
+test('Books lookup falls back on a quota denial and returns the exact NDL record without a cover', async () => {
+  const isbn = '9784577016961';
+  const link = 'https://ndlsearch.ndl.go.jp/books/R100000002-I000002537579';
+  const rss = `<rss><channel><item><title>別の本</title><link>${link}</link>
+    <dc:identifier xsi:type="dcndl:ISBN">9784834000825</dc:identifier></item>
+    <item><title>アンパンマンとまほうのふで</title><link>${link}</link>
+    <description><![CDATA[<p>text</p>]]></description>
+    <dc:creator>やなせたかし</dc:creator><dc:publisher>フレーベル館</dc:publisher>
+    <dcterms:issued>1996.10</dcterms:issued>
+    <dc:identifier xsi:type="dcndl:ISBN">4-577-01696-6</dc:identifier></item></channel></rss>`;
+  const calls = [];
+  const result = await lookupBook(isbn, { GOOGLE_BOOKS_API_KEY: 'test-key' }, async (url, init) => {
+    calls.push(url.hostname);
+    if (url.hostname === 'www.googleapis.com') return Response.json({}, { status: 429 });
+    assert.equal(url.href, 'https://ndlsearch.ndl.go.jp/api/opensearch?isbn=' + isbn);
+    assert.equal(init.headers['X-Goog-Api-Key'], undefined);
+    assert.equal(init.redirect, 'error');
+    return new Response(rss, { headers: { 'Content-Type': 'application/rss+xml' } });
+  });
+  assert.deepEqual(calls, ['www.googleapis.com', 'ndlsearch.ndl.go.jp']);
+  assert.deepEqual(result.value, { found: true, isbn, title: 'アンパンマンとまほうのふで',
+    authors: ['やなせたかし'], publisher: 'フレーベル館', publishedDate: '1996-10',
+    volumeId: '', hasCover: false, source: 'ndl' });
+});
+
+test('Books lookup does not silently use a different Google ISBN or a third-party NDL record', async () => {
+  const isbn = '9784577016961';
+  const result = await lookupBook(isbn, {}, async url => url.hostname === 'www.googleapis.com'
+    ? Response.json({ items: [{ id: 'notexact', volumeInfo: { title: '別の版' } }] })
+    : new Response(`<rss><channel><item><title>別機関の本</title>
+      <link>https://ndlsearch.ndl.go.jp/books/R100000001-I123</link>
+      <dc:identifier xsi:type="dcndl:ISBN">${isbn}</dc:identifier></item></channel></rss>`,
+    { headers: { 'Content-Type': 'application/rss+xml' } }));
+  assert.deepEqual(result.value, { found: false, isbn });
 });
