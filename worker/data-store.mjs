@@ -1,8 +1,9 @@
 import { DurableObject } from 'cloudflare:workers';
 import { MAX_DOCUMENT_BYTES, cloneTodo, emptyMemo, emptyTodo, failure, migrateLegacy, nextMemo, nextTodo } from './state.mjs';
+import { emptyBooks, nextBooks } from './books.mjs';
 
-const KINDS = ['todo', 'memo'];
-const empty = { todo: emptyTodo, memo: emptyMemo };
+const KINDS = ['todo', 'memo', 'books'];
+const empty = { todo: emptyTodo, memo: emptyMemo, books: emptyBooks };
 
 // One household document per service (Works' todo_state / memo_state model),
 // each with a revision for optimistic concurrency. Every operation runs inside a
@@ -103,6 +104,14 @@ export class HomesDataStore extends DurableObject {
     return this.#run(() => {
       const current = this.#read('memo');
       return { value: this.#write('memo', nextMemo(current, input), current.revision + 1) };
+    });
+  }
+
+  putBooks(input, actor) {
+    if (typeof actor !== 'string' || !actor) throw Error('Actor required');
+    return this.#run(() => {
+      const current = this.#read('books');
+      return { value: this.#write('books', nextBooks(current, input, actor), current.revision + 1) };
     });
   }
 }

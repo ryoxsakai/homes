@@ -1,4 +1,5 @@
 import { MAX_DOCUMENT_BYTES } from './state.mjs';
+import { fetchCover, lookupBook } from './books.mjs';
 
 const HOUSEHOLD_STORE_NAME = 'homes-data-v1:household';
 const CLONE_REQUEST = /^[a-zA-Z0-9_-]{16,100}$/;
@@ -8,11 +9,21 @@ const jsonBodyType = /^application\/json\s*(?:;\s*charset\s*=\s*(?:"utf-8"|utf-8
 //   GET /api/me
 //   GET|PUT /api/todo, GET /api/todo/clone?request_id=…, POST /api/todo/clone
 //   GET|PUT /api/memo
+//   GET|PUT /api/books, GET /api/books/lookup?isbn=…, GET /api/books/cover?id=…
 const routes = {
   '/api/me': ['GET'],
   '/api/todo': ['GET', 'PUT'],
   '/api/todo/clone': ['GET', 'POST'],
   '/api/memo': ['GET', 'PUT'],
+  '/api/books': ['GET', 'PUT'],
+  '/api/books/lookup': ['GET'],
+  '/api/books/cover': ['GET'],
+};
+// The only GET requests that take a query string, each with exactly one parameter.
+const queries = {
+  '/api/todo/clone': ['request_id', v => CLONE_REQUEST.test(v)],
+  '/api/books/lookup': ['isbn', v => /^[0-9Xx -]{10,17}$/.test(v)],
+  '/api/books/cover': ['id', v => /^[A-Za-z0-9_-]{4,40}$/.test(v)],
 };
 
 export async function readBoundedJson(request, limit = MAX_DOCUMENT_BYTES) {
@@ -56,8 +67,9 @@ export async function handleHomesData(request, env, member, respond) {
   if (!allowed) return error(404, 'not_found');
   if (!allowed.includes(method)) return error(405, 'method_not_allowed');
   const cloneLookup = pathname === '/api/todo/clone' && method === 'GET';
-  if (cloneLookup
-    ? [...searchParams.keys()].join() !== 'request_id' || !CLONE_REQUEST.test(searchParams.get('request_id'))
+  const query = method === 'GET' && queries[pathname];
+  if (query
+    ? [...searchParams.keys()].join() !== query[0] || !query[1](searchParams.get(query[0]))
     : url.search) return error(400, 'invalid_input');
   const requestOrigin = request.headers.get('Origin');
   const fetchSite = request.headers.get('Sec-Fetch-Site');
@@ -65,6 +77,14 @@ export async function handleHomesData(request, env, member, respond) {
       (fetchSite !== null && !['same-origin', 'none'].includes(fetchSite)) ||
       (method !== 'GET' && requestOrigin !== origin)) return error(403, 'forbidden');
   if (pathname === '/api/me') return json(200, {name: member.alias});
+  if (pathname === '/api/books/cover') {
+    const cover = await fetchCover(searchParams.get('id'));
+    return cover ? respond(200, cover.body, {type: cover.type, cache: 'private, max-age=604800'}) : respond(404, null, {type: 'text/plain; charset=utf-8'});
+  }
+  if (pathname === '/api/books/lookup') {
+    const found = await lookupBook(searchParams.get('isbn'), env);
+    return found.error ? json(found.error.status, {error: found.error.message}) : json(200, found.value);
+  }
   try {
     // This deployment has a single household. Only authenticated members reach this
     // fixed, server-only namespace; neither client nor environment can select a different store.
@@ -72,12 +92,13 @@ export async function handleHomesData(request, env, member, respond) {
     let result;
     if (method === 'GET') {
       result = cloneLookup ? await store.cloneResult(searchParams.get('request_id'))
-        : await store.read(pathname === '/api/todo' ? 'todo' : 'memo');
+        : await store.read(pathname.slice('/api/'.length));
       if (pathname === '/api/todo' && result.value) result.value.plannerVersion = 1;
     } else {
       const [status, body] = await readBoundedJson(request);
       if (status !== 200) return error(status, body);
       result = pathname === '/api/memo' ? await store.putMemo(body)
+        : pathname === '/api/books' ? await store.putBooks(body, member.alias)
         : pathname === '/api/todo' ? await store.putTodo(body, member.alias)
         : await store.cloneTodo(body, member.alias);
     }

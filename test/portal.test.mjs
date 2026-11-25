@@ -19,9 +19,10 @@ const member = { alias: '家族A' };
 
 test('signed-out visitors are sent to sign-in and never reach any Works-derived file', async () => {
   requested.length = 0;
-  for (const path of ['/app', '/todo/', '/memo/', '/todo']) assert.deepEqual(await get(path, null), { status: 303, body: null, options: { location: '/' } });
+  for (const path of ['/app', '/todo/', '/memo/', '/todo', '/books/', '/books']) assert.deepEqual(await get(path, null), { status: 303, body: null, options: { location: '/' } });
   assert.equal((await get('/shared/header.js', null)).status, 404);
   assert.equal((await get('/todo/todo.js', null)).status, 404);
+  assert.equal((await get('/books/vendor/zxing-library-0.21.3.min.js', null)).status, 404);
   assert.equal(requested.length, 0);
   assert.equal(isPortalPath('/worker/data.mjs'), false);
   assert.equal(isPortalPath('/test/data.test.mjs'), false);
@@ -42,6 +43,7 @@ test('signed-in pages get the self-only script CSP that still allows the mobile 
   assert.equal((await get('/todo/missing.js', member)).status, 404);
   assert.equal((await get('/todo/', member, 'POST')).status, 405);
   assert.deepEqual(await get('/memo', member), { status: 308, body: null, options: { location: '/memo/' } });
+  assert.deepEqual(await get('/books', member), { status: 308, body: null, options: { location: '/books/' } });
 });
 
 test('the app entry resumes the last service and advertises the Homes install metadata', async () => {

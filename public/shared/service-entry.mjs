@@ -40,7 +40,7 @@ if (!embedded && window === top && mobile && hasSession() &&
       if (location.pathname === '/memo/')
         return !document.querySelector('.memo-main').hidden ||
           document.querySelector('#login-loading').textContent.includes('失敗');
-      if (['/', '/tutor/', '/admission/', '/material/'].includes(location.pathname)) return document.body.dataset.serviceReady === 'true';
+      if (['/', '/tutor/', '/admission/', '/material/', '/books/'].includes(location.pathname)) return document.body.dataset.serviceReady === 'true';
       const signedIn = document.querySelector('#signed-in');
       return !signedIn || !signedIn.hidden;
     };
@@ -90,6 +90,8 @@ function startHost() {
     const frame = document.createElement('iframe');
     frame.className = 'works-service-frame';
     frame.title = 'Homes';
+    // The bookshelf scans barcodes with the camera inside this same-origin frame.
+    frame.allow = 'camera';
     if (background || visible) {
       frame.inert = true;
       frame.setAttribute('aria-hidden', 'true');

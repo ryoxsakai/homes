@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>本棚 | Homes</title>
+  <link rel="apple-touch-icon" sizes="600x600" href="/homes-icon.png">
+  <link rel="manifest" href="/homes.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Homes">
+  <script src="/shared/theme-init.js?v=1"></script>
+  <link rel="stylesheet" href="/shared/header.css?v=navigation-2">
+  <link rel="stylesheet" href="/shared/works-design.css?v=4">
+  <link rel="stylesheet" href="/shared/works-dialogs.css?v=fb98327c">
+  <link rel="stylesheet" href="/shared/homes-theme.css?v=1">
+  <link rel="stylesheet" href="/books/books.css?v=1">
+</head>
+<body class="books-page">
+  <header class="page-header works-header">
+    <h1><a class="works-home" href="/" aria-label="Homes ホーム"><img class="page-header-icon homes-logo" src="/homes-icon.png" alt="" width="32" height="32"><span>Homes</span></a><span class="works-page-title">本棚</span></h1>
+    <div class="works-header-actions">
+      <div id="user-bar" class="user-bar" hidden>
+        <button id="sign-out" class="user-icon-btn" type="button" aria-label="ログアウト" title="ログアウト">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="9" r="3"/><path d="M5.5 18c1-3 3-4.5 6.5-4.5s5.5 1.5 6.5 4.5"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <p id="loading" class="books-loading" role="status">読み込み中…</p>
+
+  <main id="books-main" class="books-main" hidden>
+    <div class="books-heading">
+      <div>
+        <p class="eyebrow">BOOKSHELF</p>
+        <h2>本棚</h2>
+        <p id="summary" class="books-summary"></p>
+      </div>
+      <div class="books-heading-actions">
+        <button id="open-manage" class="books-btn" type="button" aria-haspopup="dialog">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>
+          <span>分類と場所</span>
+        </button>
+        <button id="open-add" class="books-btn books-btn-primary" type="button" aria-haspopup="dialog">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M8 8v8M11 8v8M14 8v8M17 8v8"/></svg>
+          <span>本を登録</span>
+        </button>
+      </div>
+    </div>
+
+    <p id="save-status" class="books-save-status" role="status" aria-live="polite"></p>
+
+    <section class="books-toolbar" aria-label="絞り込みと並べ替え">
+      <div class="books-status-tabs" role="group" aria-label="所有状況">
+        <button type="button" data-status="all" aria-pressed="true">すべて</button>
+        <button type="button" data-status="owned" aria-pressed="false">持っている</button>
+        <button type="button" data-status="wanted" aria-pressed="false">欲しい</button>
+      </div>
+      <div class="books-view-toggle" role="group" aria-label="表示形式">
+          <button type="button" data-view="grid" aria-pressed="true" aria-label="表紙で表示" title="表紙で表示">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg>
+          </button>
+          <button type="button" data-view="list" aria-pressed="false" aria-label="リストで表示" title="リストで表示">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg>
+          </button>
+        </div>
+      <label class="books-search">
+        <span class="works-sr-only">検索</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="search" type="search" placeholder="タイトル・著者・タグ・メモ" autocomplete="off">
+      </label>
+      <div class="books-filters">
+        <label><span>カテゴリ</span><select id="filter-category"></select></label>
+        <label><span>場所</span><select id="filter-location"></select></label>
+        <label><span>タグ</span><select id="filter-tag"></select></label>
+        <label><span>並べ替え</span>
+          <select id="sort">
+            <option value="added-desc">登録が新しい順</option>
+            <option value="added-asc">登録が古い順</option>
+            <option value="title">タイトル順</option>
+            <option value="author">著者順</option>
+            <option value="published-desc">出版が新しい順</option>
+            <option value="published-asc">出版が古い順</option>
+            <option value="location">場所順</option>
+            <option value="category">カテゴリ順</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <p id="result-count" class="books-result-count" aria-live="polite"></p>
+    <ul id="book-list" class="books-grid" aria-label="本の一覧"></ul>
+    <div id="empty" class="books-empty" hidden>
+      <p id="empty-text"></p>
+      <button id="empty-add" class="books-btn books-btn-primary" type="button">本を登録</button>
+    </div>
+  </main>
+
+  <!-- 本を登録：バーコード読み取り / ISBN入力 -->
+  <dialog id="add-dialog" class="books-dialog" aria-labelledby="add-title">
+    <div class="books-dialog-head">
+      <h3 id="add-title">本を登録</h3>
+      <button class="books-icon-btn" type="button" data-close aria-label="閉じる">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div class="books-dialog-body">
+      <div class="books-scanner" id="scanner" hidden>
+        <video id="scanner-video" muted playsinline></video>
+        <div class="books-scanner-guide" aria-hidden="true"><span></span></div>
+      </div>
+      <p id="scan-message" class="books-scan-message" role="status" aria-live="polite">裏表紙の上段のバーコード（978から始まる番号）を枠に合わせてください。</p>
+      <div class="books-scan-actions">
+        <button id="scan-start" class="books-btn books-btn-primary" type="button">カメラで読み取る</button>
+        <button id="scan-stop" class="books-btn" type="button" hidden>カメラを止める</button>
+      </div>
+      <form id="isbn-form" class="books-isbn-form" novalidate>
+        <label for="isbn-input">ISBNを入力</label>
+        <div class="books-isbn-row">
+          <input id="isbn-input" inputmode="numeric" autocomplete="off" placeholder="978…（10桁も可）" maxlength="17">
+          <button class="books-btn" type="submit">検索</button>
+        </div>
+      </form>
+      <button id="manual-entry" class="books-link-btn" type="button">ISBNがない本を手入力で登録</button>
+    </div>
+  </dialog>
+
+  <!-- 本の詳細・編集 -->
+  <dialog id="book-dialog" class="books-dialog books-dialog-wide" aria-labelledby="book-title">
+    <form id="book-form" method="dialog" novalidate>
+      <div class="books-dialog-head">
+        <h3 id="book-title">本の情報</h3>
+        <button class="books-icon-btn" type="button" data-close aria-label="閉じる">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div class="books-dialog-body books-edit">
+        <div class="books-edit-cover" id="edit-cover"></div>
+        <div class="books-edit-fields">
+          <fieldset class="books-owned-toggle">
+            <legend>所有状況</legend>
+            <label><input type="radio" name="status" value="owned" checked><span>持っている</span></label>
+            <label><input type="radio" name="status" value="wanted"><span>欲しい</span></label>
+          </fieldset>
+          <label class="books-field"><span>タイトル<em>必須</em></span><input name="title" required maxlength="300"></label>
+          <label class="books-field"><span>著者・絵</span><input name="authors" maxlength="1000" placeholder="複数の場合は「、」で区切る"></label>
+          <div class="books-field-row">
+            <label class="books-field"><span>出版社</span><input name="publisher" maxlength="200"></label>
+            <label class="books-field"><span>出版日</span><input name="publishedDate" maxlength="20" placeholder="2001-04"></label>
+          </div>
+          <div class="books-field-row">
+            <label class="books-field"><span>場所</span><select name="location"></select></label>
+            <label class="books-field"><span>カテゴリ</span><select name="category"></select></label>
+          </div>
+          <div class="books-field">
+            <span id="tag-label">タグ</span>
+            <div class="books-tag-input" role="group" aria-labelledby="tag-label">
+              <ul id="tag-chips" class="books-chips"></ul>
+              <input id="tag-entry" list="tag-options" maxlength="50" placeholder="入力してEnter" aria-label="タグを追加" enterkeyhint="done">
+              <datalist id="tag-options"></datalist>
+            </div>
+          </div>
+          <label class="books-field"><span>メモ</span><textarea name="memo" rows="3" maxlength="5000" placeholder="お気に入りのページ、もらった人など"></textarea></label>
+          <p id="book-meta" class="books-meta"></p>
+        </div>
+      </div>
+      <div class="books-dialog-foot">
+        <button id="delete-book" class="books-btn books-btn-danger" type="button" hidden>削除</button>
+        <span class="books-spacer"></span>
+        <button class="books-btn" type="button" data-close>キャンセル</button>
+        <button id="save-book" class="books-btn books-btn-primary" type="submit">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- カテゴリと場所の管理 -->
+  <dialog id="manage-dialog" class="books-dialog" aria-labelledby="manage-title">
+    <div class="books-dialog-head">
+      <h3 id="manage-title">カテゴリと場所</h3>
+      <button class="books-icon-btn" type="button" data-close aria-label="閉じる">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div class="books-dialog-body">
+      <section class="books-manage" data-kind="categories">
+        <h4>カテゴリ</h4>
+        <ul class="books-manage-list"></ul>
+        <form class="books-manage-add"><input maxlength="50" placeholder="新しいカテゴリ" aria-label="新しいカテゴリ"><button class="books-btn" type="submit">追加</button></form>
+      </section>
+      <section class="books-manage" data-kind="locations">
+        <h4>場所</h4>
+        <ul class="books-manage-list"></ul>
+        <form class="books-manage-add"><input maxlength="50" placeholder="新しい場所（例：寝室の棚）" aria-label="新しい場所"><button class="books-btn" type="submit">追加</button></form>
+      </section>
+      <p class="books-hint">タグは本ごとに自由に付けられます。名前を変えると、登録済みの本にも反映されます。</p>
+    </div>
+  </dialog>
+
+  <div id="toast" class="books-toast" role="status" aria-live="polite" hidden></div>
+
+  <script type="module" src="/shared/service-entry.mjs?v=6" data-service-app="/books/app.mjs?v=1"></script>
+</body>
+</html>
