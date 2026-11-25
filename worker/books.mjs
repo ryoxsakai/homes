@@ -109,7 +109,8 @@ export async function lookupBook(rawIsbn, env, upstream = fetch) {
   const google = await lookupGoogleBook(isbn, env, upstream);
   if (google.value?.found) return google;
   const ndl = await lookupNdlBook(isbn, upstream);
-  return ndl ? { value: ndl } : google;
+  if (ndl.value) return ndl;
+  return google.error ? { ...google, ndlStatus: ndl.status } : google;
 }
 
 async function lookupGoogleBook(isbn, env, upstream) {
@@ -187,9 +188,9 @@ async function lookupNdlBook(isbn, upstream) {
       headers: { Accept: 'application/rss+xml, application/xml, text/xml' },
       redirect: 'error', signal: AbortSignal.timeout(18000),
     });
-    if (!response.ok) return null;
+    if (!response.ok) return { status: 'http-' + response.status };
     const rss = await readNdlRss(response);
-    if (/<!DOCTYPE|<!ENTITY/i.test(rss)) return null;
+    if (!/<rss[\s>]/.test(rss) || /<!DOCTYPE|<!ENTITY/i.test(rss)) return { status: 'invalid-response' };
     for (const [, record] of rss.replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, '').matchAll(/<item\b[^>]*>([\s\S]*?)<\/item>/g)) {
       const link = xmlText(record.match(/<link>([^<]*)<\/link>/)?.[1] ?? '').trim();
       if (!NDL_RECORD.test(link)) continue;
@@ -202,11 +203,13 @@ async function lookupNdlBook(isbn, upstream) {
       const authors = [...record.matchAll(/<dc:creator(?:\s[^>]*)?>([^<]*)<\/dc:creator>/g)]
         .map(([, s]) => clip(xmlText(s), 200)).filter(Boolean).slice(0, 20);
       const date = read('dcterms:issued', 20) || read('dc:date', 20);
-      return { found: true, isbn, title, authors, publisher: read('dc:publisher', 200),
-        publishedDate: date.replace(/\./g, '-'), volumeId: '', hasCover: false, source: 'ndl' };
+      return { value: { found: true, isbn, title, authors, publisher: read('dc:publisher', 200),
+        publishedDate: date.replace(/\./g, '-'), volumeId: '', hasCover: false, source: 'ndl' } };
     }
-  } catch { /* Keep Google's original result if this optional provider is unavailable. */ }
-  return null;
+    return { status: 'no-exact-match' };
+  } catch (error) {
+    return { status: ['TimeoutError', 'AbortError'].includes(error?.name) ? 'timeout' : 'request-failed' };
+  }
 }
 
 const MAX_COVER_BYTES = 1_000_000;

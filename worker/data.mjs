@@ -83,7 +83,8 @@ export async function handleHomesData(request, env, member, respond) {
   }
   if (pathname === '/api/books/lookup') {
     const found = await lookupBook(searchParams.get('isbn'), env);
-    return found.error ? json(found.error.status, {error: found.error.message}) : json(200, found.value);
+    return found.error ? json(found.error.status, {error: found.error.message,
+      ...(found.ndlStatus && { ndlStatus: found.ndlStatus })}) : json(200, found.value);
   }
   try {
     // This deployment has a single household. Only authenticated members reach this
