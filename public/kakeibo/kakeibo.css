@@ -45,3 +45,68 @@
   .kakeibo-add button[type="submit"] { grid-column: 1 / -1; }
   .kakeibo-add #add-cycle-field { grid-column: 1 / -1; }
 }
+
+/* Filters: tag and 見直し対象 */
+.kakeibo-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.kakeibo-filters select { min-width: 160px; }
+.kakeibo-filters select.is-filtered { border-color: var(--works-accent); background: var(--works-accent-soft); }
+.kakeibo-review-filter {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px;
+  border: 1px solid var(--works-line-strong); border-radius: 8px; background: var(--works-surface); color: var(--works-ink-2);
+  font-weight: 600; cursor: pointer;
+}
+.kakeibo-review-filter[aria-pressed="true"] { border-color: var(--works-warning); background: var(--works-warning-soft); color: var(--works-warning); }
+
+/* Tags: a dot in the ToDo colour (or none) plus the name */
+.kakeibo-dot { display: inline-block; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--dot); }
+.kakeibo-dot.is-none { background: transparent; box-shadow: inset 0 0 0 1.5px var(--works-line-strong); }
+.kakeibo-tag { display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; border-radius: 999px; background: var(--works-track); color: var(--works-ink-2); font-size: 11px; line-height: 20px; white-space: nowrap; }
+.kakeibo-review-badge { padding: 0 8px; border-radius: 999px; background: var(--works-warning-soft); color: var(--works-warning); font-size: 11px; font-weight: 700; line-height: 20px; }
+.kakeibo-tag-picker { display: flex; flex-wrap: wrap; gap: 6px; }
+.kakeibo-tag-picker:empty { display: none; }
+.kakeibo-add .kakeibo-tag-picker { grid-column: 1 / -1; }
+.kakeibo-tag-picker button {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px;
+  border: 1px solid var(--works-line-strong); border-radius: 999px; background: var(--works-surface); color: var(--works-ink-2);
+  font-size: 13px; cursor: pointer;
+}
+.kakeibo-tag-picker button[aria-pressed="true"] { border-color: var(--works-accent); background: var(--works-accent-soft); color: var(--works-accent-strong); font-weight: 700; }
+.kakeibo-tag-picker button:focus-visible, .kakeibo-review-toggle:focus-visible { outline: 2px solid var(--works-accent); outline-offset: 1px; }
+
+/* 見直し対象 flag on each row */
+.kakeibo-review-toggle {
+  display: grid; place-items: center; flex: none; width: 40px; height: 44px; padding: 0;
+  border: 0; border-radius: 8px; background: transparent; color: var(--works-input-line); cursor: pointer;
+}
+.kakeibo-review-toggle:hover { color: var(--works-warning); background: var(--works-warning-soft); }
+.kakeibo-review-toggle[aria-pressed="true"] { color: var(--works-warning); }
+.kakeibo-review-toggle[aria-pressed="true"] svg { fill: currentColor; }
+.homes-row.is-review { box-shadow: inset 3px 0 0 #d98a1c; }
+.kakeibo-check { display: flex; align-items: center; gap: 8px; min-height: 44px; font-weight: 600; cursor: pointer; }
+.kakeibo-check input { width: 20px; height: 20px; accent-color: var(--works-accent); }
+
+/* Tag settings */
+.kakeibo-tag-form { display: grid; gap: 12px; padding: 12px; border-radius: 8px; background: var(--works-surface-sunken); }
+.kakeibo-tag-form h4 { margin: 0; font-size: 14px; }
+.kakeibo-colors { margin: 0; padding: 0; border: 0; }
+.kakeibo-colors legend { margin-bottom: 4px; padding: 0; color: var(--works-ink-2); font-size: 12px; font-weight: 600; }
+.kakeibo-color-options { display: flex; flex-wrap: wrap; gap: 2px; }
+.kakeibo-color-options button {
+  display: grid; place-items: center; width: 44px; height: 44px; padding: 0;
+  border: 0; border-radius: 8px; background: transparent; cursor: pointer;
+}
+.kakeibo-color-options button .kakeibo-dot { width: 20px; height: 20px; }
+.kakeibo-color-options button:hover, .kakeibo-color-options button[aria-pressed="true"] { background: var(--works-surface); box-shadow: var(--works-shadow-sm); }
+.kakeibo-color-options button:focus-visible { outline: 2px solid var(--works-accent); outline-offset: 1px; }
+.kakeibo-color-custom { display: flex; align-items: center; gap: 8px; min-height: 48px; }
+.kakeibo-color-custom label { flex: 1; font-size: 13px; }
+.kakeibo-color-custom output { color: var(--works-ink-2); font: 12px ui-monospace, monospace; }
+.kakeibo-color-custom input[type="color"] { width: 48px; height: 44px; padding: 4px; border: 1px solid var(--works-input-line); border-radius: 8px; background: var(--works-surface); cursor: pointer; }
+.kakeibo-tag-form-actions { display: flex; justify-content: flex-end; gap: 8px; }
+#tag-list .homes-manage-name { display: inline-flex; align-items: center; gap: 8px; }
+
+@media (max-width: 730px) {
+  .kakeibo-filters { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+  .kakeibo-filters select { width: 100%; min-width: 0; font-size: 14px; }
+  .kakeibo-review-toggle { width: 36px; }
+}

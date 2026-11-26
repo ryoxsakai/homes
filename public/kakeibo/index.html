@@ -15,12 +15,15 @@
   <link rel="stylesheet" href="/shared/works-dialogs.css?v=fb98327c">
   <link rel="stylesheet" href="/shared/homes-theme.css?v=menu-unified-2">
   <link rel="stylesheet" href="/shared/homes-app.css?v=menu-unified-1">
-  <link rel="stylesheet" href="/kakeibo/kakeibo.css?v=1">
+  <link rel="stylesheet" href="/kakeibo/kakeibo.css?v=2">
 </head>
 <body class="homes-page kakeibo-page">
   <header class="page-header works-header">
     <h1><a class="works-home" href="/" aria-label="Homes ホーム"><img class="page-header-icon homes-logo" src="/homes-icon.png" alt="" width="32" height="32"><span>Homes</span></a><span class="works-page-title">家計</span></h1>
     <div class="works-header-actions">
+      <button id="open-tags" type="button" aria-haspopup="dialog" aria-controls="tag-dialog" aria-label="タグ設定" title="タグ設定" hidden>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.325 4.317a1.724 1.724 0 0 1 3.35 0 1.724 1.724 0 0 0 2.573 1.066 1.724 1.724 0 0 1 2.369 2.37 1.724 1.724 0 0 0 1.065 2.572 1.724 1.724 0 0 1 0 3.35 1.724 1.724 0 0 0-1.065 2.573 1.724 1.724 0 0 1-2.37 2.369 1.724 1.724 0 0 0-2.572 1.065 1.724 1.724 0 0 1-3.35 0 1.724 1.724 0 0 0-2.573-1.065 1.724 1.724 0 0 1-2.369-2.37 1.724 1.724 0 0 0-1.065-2.572 1.724 1.724 0 0 1 0-3.35 1.724 1.724 0 0 0 1.065-2.573 1.724 1.724 0 0 1 2.37-2.369 1.724 1.724 0 0 0 2.572-1.065"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
       <div id="user-bar" class="user-bar" hidden>
         <button id="sign-out" class="user-icon-btn" type="button" aria-label="ログアウト" title="ログアウト">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="9" r="3"/><path d="M5.5 18c1-3 3-4.5 6.5-4.5s5.5 1.5 6.5 4.5"/></svg>
@@ -38,7 +41,7 @@
         <p id="summary" class="homes-summary"></p>
       </div>
       <div class="homes-heading-actions">
-        <button id="open-add" class="homes-btn homes-btn-primary" type="button">
+        <button id="open-add" class="homes-btn homes-btn-primary" type="button" aria-expanded="false" aria-controls="add-form">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
           <span id="open-add-label">記録する</span>
         </button>
@@ -67,14 +70,23 @@
       <button type="button" role="tab" data-tab="living"><span>生活・雑貨</span><small data-total="living"></small></button>
     </div>
 
-    <section id="panel" role="tabpanel" aria-labelledby="">
-      <form id="add-form" class="homes-inline-form kakeibo-add" autocomplete="off">
+    <div class="kakeibo-filters" role="group" aria-label="絞り込み">
+      <label><span class="homes-sr-only">タグで絞り込み</span><select id="filter-tag"></select></label>
+      <button id="filter-review" class="kakeibo-review-filter" type="button" aria-pressed="false">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>
+        <span>見直し対象</span><span id="review-count" class="homes-count">0</span>
+      </button>
+    </div>
+
+    <section id="panel" role="tabpanel">
+      <form id="add-form" class="homes-inline-form kakeibo-add" autocomplete="off" hidden>
         <label><span class="homes-sr-only" id="add-name-label">店名</span><input id="add-name" maxlength="100" list="name-options" enterkeyhint="next"></label>
         <label class="kakeibo-yen"><span class="homes-sr-only">金額（円）</span><input id="add-amount" inputmode="numeric" maxlength="14" placeholder="金額" enterkeyhint="done"></label>
         <label id="add-cycle-field"><span class="homes-sr-only">支払い</span>
           <select id="add-cycle"><option value="monthly">毎月</option><option value="bimonthly">隔月</option><option value="yearly">年払い</option></select>
         </label>
         <button class="homes-btn homes-btn-primary" type="submit">追加</button>
+        <div id="add-tags" class="kakeibo-tag-picker" role="group" aria-label="タグ"></div>
         <datalist id="name-options"></datalist>
       </form>
       <p id="tab-note" class="kakeibo-note"></p>
@@ -89,7 +101,7 @@
       <button id="menu-month" type="button" aria-label="今月を表示" title="今月を表示">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
       </button>
-      <button id="menu-add" class="homes-menu-add" type="button" aria-label="記録する" title="記録する">
+      <button id="menu-add" class="homes-menu-add" type="button" aria-expanded="false" aria-controls="add-form" aria-label="入力欄を開く" title="入力欄を開く">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
       </button>
     </nav>
@@ -120,6 +132,11 @@
           </label>
         </div>
         <label class="homes-field"><span>メモ</span><input name="memo" maxlength="200" placeholder="任意"></label>
+        <div class="homes-field">
+          <span id="edit-tags-label">タグ</span>
+          <div id="edit-tags" class="kakeibo-tag-picker" role="group" aria-labelledby="edit-tags-label"></div>
+        </div>
+        <label class="kakeibo-check"><input type="checkbox" name="review"><span>見直し対象にする</span></label>
         <p id="item-meta" class="homes-meta"></p>
       </div>
       <div class="homes-dialog-foot">
@@ -131,8 +148,35 @@
     </form>
   </dialog>
 
+  <!-- タグ設定 -->
+  <dialog id="tag-dialog" class="homes-dialog" aria-labelledby="tag-title">
+    <div class="homes-dialog-head">
+      <h3 id="tag-title">タグ設定</h3>
+      <button class="homes-icon-btn" type="button" data-close aria-label="閉じる">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div class="homes-dialog-body">
+      <ul id="tag-list" class="homes-manage-list"></ul>
+      <form id="tag-form" class="kakeibo-tag-form" autocomplete="off" novalidate>
+        <h4 id="tag-form-title">新しいタグ</h4>
+        <label class="homes-field"><span>名前</span><input id="tag-name" maxlength="30" placeholder="例：サブスク・子ども・旅行"></label>
+        <fieldset class="kakeibo-colors">
+          <legend>色（任意）</legend>
+          <div id="tag-colors" class="kakeibo-color-options" role="group" aria-label="定型色"></div>
+          <div class="kakeibo-color-custom"><label for="tag-color-custom">カスタムカラー</label><output id="tag-color-value" for="tag-color-custom"></output><input type="color" id="tag-color-custom"></div>
+        </fieldset>
+        <div class="kakeibo-tag-form-actions">
+          <button id="tag-cancel" class="homes-btn" type="button" hidden>編集をやめる</button>
+          <button id="tag-submit" class="homes-btn homes-btn-primary" type="submit">追加</button>
+        </div>
+      </form>
+      <p class="homes-hint">色はToDoと同じパレットから選べます（色なしも可）。タグを削除すると、付けていた記録からも外れます。</p>
+    </div>
+  </dialog>
+
   <div id="toast" class="homes-toast" role="status" aria-live="polite" hidden></div>
 
-  <script type="module" src="/shared/service-entry.mjs?v=7" data-service-app="/kakeibo/app.mjs?v=2"></script>
+  <script type="module" src="/shared/service-entry.mjs?v=7" data-service-app="/kakeibo/app.mjs?v=3"></script>
 </body>
 </html>

@@ -6,8 +6,8 @@ import { adminIdentity, mergeMembers, readMembers, signedInMember } from '../wor
 import { createApp } from '../worker/auth.mjs';
 import { portalResponse } from '../worker/portal.mjs';
 
-const entry = (over = {}) => ({ id: 'e1', kind: 'eatout', date: '2026-11-20', place: '〇〇食堂', amount: 1200, memo: '', by: null, ...over });
-const fixed = (over = {}) => ({ id: 'f1', name: '家賃', amount: 80000, cycle: 'monthly', memo: '', addedBy: null, ...over });
+const entry = (over = {}) => ({ id: 'e1', kind: 'eatout', date: '2026-11-20', place: '〇〇食堂', amount: 1200, memo: '', by: null, tags: [], review: false, ...over });
+const fixed = (over = {}) => ({ id: 'f1', name: '家賃', amount: 80000, cycle: 'monthly', memo: '', addedBy: null, tags: [], review: false, ...over });
 const kakeibo = (over = {}) => ({ ...emptyKakeibo(), fixed: [fixed()], entries: [entry()], ...over });
 
 test('家計 documents are validated', () => {
@@ -19,6 +19,22 @@ test('家計 documents are validated', () => {
     { entries: [entry({ amount: 100_000_001 })] }, { entries: [entry({ date: '2026-11-31' })] }, { entries: [entry({ place: '' })] },
     { fixed: [fixed({ cycle: 'weekly' })] }, { fixed: [fixed({ id: 'e1' })] },
   ]) assert.throws(() => validateKakeibo(kakeibo(bad)), { status: 400 }, JSON.stringify(bad));
+});
+
+test('家計 tags use the ToDo palette (or a custom colour, or none) and 見直し is a flag', () => {
+  const tags = [{ id: 't1', name: 'サブスク', color: 'purple' }, { id: 't2', name: '子ども', color: '#1a2b3c' }, { id: 't3', name: '旅行', color: null }];
+  validateKakeibo(kakeibo({ tags, fixed: [fixed({ tags: ['t1'], review: true })], entries: [entry({ tags: ['t2', 't3'] })] }));
+  for (const bad of [
+    { tags: [{ id: 't1', name: 'x', color: 'gold' }] }, { tags: [{ id: 't1', name: 'x', color: 'url(x)' }] },
+    { tags: [{ id: 't1', name: 'x', color: null }, { id: 't2', name: 'x', color: null }] },
+    { tags, entries: [entry({ tags: ['missing'] })] }, { tags, entries: [entry({ tags: ['t1', 't1'] })] },
+    { tags, fixed: [fixed({ review: 'yes' })] },
+  ]) assert.throws(() => validateKakeibo(kakeibo(bad)), { status: 400 }, JSON.stringify(bad));
+  // Documents saved before tags existed still save, with empty defaults.
+  const old = { fixed: [{ id: 'f1', name: '家賃', amount: 80000, cycle: 'monthly', memo: '', addedBy: '家族A' }],
+    entries: [{ id: 'e1', kind: 'eatout', date: '2026-11-20', place: '店', amount: 900, memo: '', by: '家族A' }], revision: 3 };
+  const saved = nextKakeibo(old, { ...old }, '家族B');
+  assert.deepEqual([saved.tags, saved.fixed[0].tags, saved.entries[0].review], [[], [], false]);
 });
 
 test('家計: the server records who entered each row, keeps it on edit and on delete-undo', () => {
