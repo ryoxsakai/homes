@@ -65,7 +65,7 @@ export function mergeMembers(base, directory, env) {
   const names = new Map((directory?.names ?? []).map(n => [n.email, n.alias]));
   const admin = adminIdentity(env);
   const map = new Map();
-  for (const [email, m] of base) map.set(email, { ...m, email, alias: names.get(email) ?? m.alias, source: 'secret' });
+  for (const [email, m] of base) map.set(email, { ...m, email, alias: names.get(email) ?? m.alias, baseAlias: m.alias, source: 'secret' });
   for (const a of directory?.added ?? []) {
     if (map.has(a.email) || map.size >= MAX_MEMBERS) continue;
     map.set(a.email, { email: a.email, alias: names.get(a.email) ?? a.alias, sub: a.sub ?? null, source: 'added' });

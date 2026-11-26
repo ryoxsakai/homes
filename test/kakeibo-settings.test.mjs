@@ -65,17 +65,28 @@ const origin = 'https://homes.example.test';
 function fixture(session) {
   const calls = [];
   const directory = { added: [{ email: 'grandma@gmail.com', alias: '祖母', sub: null }], names: [] };
+  const pending = [];
+  let failRename = false, nextId = 1;
   const env = {
     HOMES_AUTH_ORIGIN: origin, GOOGLE_CLIENT_ID: 'c', GOOGLE_CLIENT_SECRET: 's',
     HOMES_FAMILY_MEMBERS: family, HOMES_ADMIN_EMAIL: 'admin@gmail.com',
     AUTH_STORE: { idFromName: n => n, get: () => ({
       readSession: async () => session, memberDirectory: async () => structuredClone(directory),
-      addMember: async (...a) => { calls.push(['add', ...a]); directory.added.push({ email: a[0], alias: a[1], sub: a[2] }); },
-      setMemberName: async (...a) => { calls.push(['name', ...a]); },
+      addMember: async (...a) => { calls.push(['add', ...a.slice(0, 3)]); directory.added.push({ email: a[0], alias: a[1], sub: a[2] }); return { ok: true }; },
+      setMemberName: async (email, alias, base) => {
+        calls.push(['name', email, alias]);
+        assert.ok(base.every(m => m.email && m.alias), 'the store gets the secret members for its check');
+        const from = (directory.names.find(n => n.email === email) || {}).alias ?? base.find(m => m.email === email)?.alias;
+        directory.names = [...directory.names.filter(n => n.email !== email), { email, alias }];
+        pending.push({ id: nextId++, from_alias: from, to_alias: alias });
+        return { ok: true };
+      },
+      pendingRenames: async () => structuredClone(pending),
+      finishRename: async id => { calls.push(['finish', id]); pending.splice(pending.findIndex(p => p.id === id), 1); },
       removeMember: async (...a) => { calls.push(['remove', ...a]); },
     }) },
     HOME_STORE: { idFromName: n => n, get: () => ({
-      renameActor: async (...a) => { calls.push(['renameActor', ...a]); return { value: { changed: 1 } }; },
+      renameActor: async (...a) => { if (failRename) throw Error('down'); calls.push(['renameActor', ...a]); return { value: { changed: 1 } }; },
       read: async kind => ({ value: { ...emptyKakeibo(), revision: 0, kind } }),
     }) },
   };
@@ -84,7 +95,7 @@ function fixture(session) {
     method, headers: { Cookie: '__Host-homes-session=' + 's'.repeat(43), ...(method !== 'GET' && { Origin: origin, 'Content-Type': 'application/json' }) },
     ...(body && { body: JSON.stringify(body) }),
   }), env);
-  return { call, calls };
+  return { call, calls, pending, setFail: v => { failRename = v; } };
 }
 
 test('settings API: admin only; add, rename (rewriting records) and remove members', async () => {
@@ -107,7 +118,15 @@ test('settings API: admin only; add, rename (rewriting records) and remove membe
   assert.deepEqual(f.calls.at(-1), ['add', 'aunt@gmail.com', 'おば', null]);
 
   assert.equal((await f.call('/api/settings/members', 'PUT', { email: 'other@gmail.com', alias: 'パパ' })).status, 200);
-  assert.deepEqual(f.calls.slice(-2), [['name', 'other@gmail.com', 'パパ'], ['renameActor', '家族B', 'パパ']]);
+  assert.deepEqual(f.calls.slice(-3), [['name', 'other@gmail.com', 'パパ'], ['renameActor', '家族B', 'パパ'], ['finish', 1]]);
+  // If rewriting past records fails, the rename stays pending and is retried later.
+  f.setFail(true);
+  assert.equal((await f.call('/api/settings/members', 'PUT', { email: 'other@gmail.com', alias: 'お父さん' })).status, 503);
+  assert.equal(f.pending.length, 1);
+  f.setFail(false);
+  assert.equal((await f.call('/api/settings/members')).status, 200);
+  assert.deepEqual(f.calls.slice(-2), [['renameActor', 'パパ', 'お父さん'], ['finish', 2]]);
+  assert.equal(f.pending.length, 0);
   assert.equal((await f.call('/api/settings/members', 'PUT', { email: 'other@gmail.com', alias: 'a@b' })).status, 400);
 
   assert.equal((await f.call('/api/settings/members', 'DELETE', { email: 'other@gmail.com' })).status, 400, 'secret members stay');

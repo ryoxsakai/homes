@@ -15,9 +15,23 @@ function checkAlias(raw, members, except) {
   return [alias];
 }
 
+// Moves past records from old to new names, oldest rename first. A task is removed
+// only after its rewrite succeeds, so a failure is retried on the next settings call.
+async function applyPendingRenames(auth, env) {
+  const store = env.HOME_STORE?.get(env.HOME_STORE.idFromName('homes-data-v1:household'));
+  if (!store) return;
+  for (const task of await auth.pendingRenames()) {
+    await store.renameActor(task.from_alias, task.to_alias);
+    await auth.finishRename(task.id);
+  }
+}
+
 export async function handleSettings({ method, body, member, members, env, json }) {
   if (!member.admin) return json(403, { error: '設定は管理者だけが使えます' });
   const auth = env.AUTH_STORE.get(env.AUTH_STORE.idFromName('homes-auth-v1'));
+  // The secret's members, with their original names, for the store's uniqueness check.
+  const base = [...members.values()].filter(m => m.source === 'secret').map(m => ({ email: m.email, alias: m.baseAlias ?? m.alias }));
+  try { await applyPendingRenames(auth, env); } catch { /* Kept; retried on the next call. */ }
   const list = () => json(200, { members: [...members.values()].map(view), max: MAX_MEMBERS });
   if (method === 'GET') return list();
   const email = normalEmail(body?.email);
@@ -33,7 +47,8 @@ export async function handleSettings({ method, body, member, members, env, json 
     if (sub !== null && !MEMBER_SUB.test(sub)) return json(400, { error: 'GoogleアカウントIDの形式が正しくありません' });
     if (sub === null && !email.endsWith('@gmail.com')) return json(400, { error: 'Gmail以外のアドレスはGoogleアカウントIDも入力してください' });
     if (sub !== null && [...members.values()].some(m => m.sub === sub)) return json(409, { error: 'このGoogleアカウントIDはすでに登録されています' });
-    await auth.addMember(email, alias, sub);
+    const saved = await auth.addMember(email, alias, sub, base);
+    if (saved?.error) return json(saved.status, { error: saved.error });
     members.set(email, { email, alias, sub, source: 'added', admin: false });
     return list();
   }
@@ -43,11 +58,12 @@ export async function handleSettings({ method, body, member, members, env, json 
     const [alias, problem] = checkAlias(body.alias, members, email);
     if (!alias) return json(400, { error: problem });
     if (alias !== target.alias) {
-      await auth.setMemberName(email, alias);
-      // Records already show the old name; move them to the new one.
-      const store = env.HOME_STORE?.get(env.HOME_STORE.idFromName('homes-data-v1:household'));
-      await store?.renameActor(target.alias, alias);
+      const saved = await auth.setMemberName(email, alias, base);
+      if (saved?.error) return json(saved.status, { error: saved.error });
       target.alias = alias;
+      // Records already show the old name; move them now (retried later if this fails).
+      try { await applyPendingRenames(auth, env); }
+      catch { return json(503, { error: '表示名は変更しました。過去の記録の名前は次に設定を開いたときに更新します' }); }
     }
     return list();
   }
