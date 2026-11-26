@@ -1,5 +1,5 @@
 // Homes 家計: a rough, hand-entered picture of household spending.
-// 固定費 are standing costs (monthly, or yearly shown per month); the other tabs are
+// 固定費 are standing costs (monthly, or bimonthly / yearly shown per month); the other tabs are
 // dated entries listed by month. Saved as one household document (/api/kakeibo).
 import { watchAuth, signOutUser } from '../shared/auth.js?v=14';
 import { $, esc, collator, today, dayOf, parseDay, toast, createDocument, openDialog, wireDialogs } from '../shared/homes-doc.mjs?v=1';
@@ -17,7 +17,9 @@ const yen = n => `¥${Math.round(n).toLocaleString('ja-JP')}`;
 const monthOf = day => day.slice(0, 7);
 const monthLabel = month => `${Number(month.slice(0, 4))}年${Number(month.slice(5))}月`;
 const shiftMonth = (month, n) => { const d = parseDay(month + '-01'); d.setMonth(d.getMonth() + n); return dayOf(d).slice(0, 7); };
-const monthly = f => f.cycle === 'yearly' ? f.amount / 12 : f.amount;
+// Bimonthly (隔月) and yearly costs count toward each month as their monthly share.
+const CYCLES = { monthly: { label: '毎月', months: 1 }, bimonthly: { label: '隔月', months: 2 }, yearly: { label: '年払い', months: 12 } };
+const monthly = f => f.amount / (CYCLES[f.cycle]?.months ?? 1);
 
 let state = { fixed: [], entries: [] };
 let loaded = false;
@@ -92,17 +94,17 @@ function suggestions(tab) {
 
 function renderFixed() {
   const items = [...state.fixed].sort((a, b) => monthly(b) - monthly(a) || collator.compare(a.name, b.name));
-  $('#tab-note').innerHTML = items.length ? `毎月の固定費は約 <b>${yen(fixedTotal())}</b>（年払いは12で割って計算）` : '';
+  $('#tab-note').innerHTML = items.length ? `毎月の固定費は約 <b>${yen(fixedTotal())}</b>（隔月は2、年払いは12で割って計算）` : '';
   $('#list').innerHTML = items.map(f => `<li class="homes-row">
     <button type="button" class="homes-row-main" data-edit="${esc(f.id)}">
       <span class="homes-row-title">${esc(f.name)}</span>
       <span class="homes-row-meta">
-        <span class="homes-chip">${f.cycle === 'yearly' ? `年払い ${yen(f.amount)}` : '毎月'}</span>
+        <span class="homes-chip">${f.cycle === 'monthly' ? '毎月' : `${CYCLES[f.cycle].label} ${yen(f.amount)}`}</span>
         ${f.memo ? `<span>${esc(f.memo)}</span>` : ''}
         ${f.addedBy ? `<span>${esc(f.addedBy)}が登録</span>` : ''}
       </span>
     </button>
-    <span class="kakeibo-amount">${yen(monthly(f))}${f.cycle === 'yearly' ? '<small>月あたり</small>' : ''}</span>
+    <span class="kakeibo-amount">${yen(monthly(f))}${f.cycle === 'monthly' ? '' : '<small>月あたり</small>'}</span>
   </li>`).join('');
   finish(items.length, '固定費はまだありません。家賃・通信費・保険など、毎月（または毎年）かかるものを登録しましょう。');
 }

@@ -72,7 +72,7 @@
         <label><span class="homes-sr-only" id="add-name-label">店名</span><input id="add-name" maxlength="100" list="name-options" enterkeyhint="next"></label>
         <label class="kakeibo-yen"><span class="homes-sr-only">金額（円）</span><input id="add-amount" inputmode="numeric" maxlength="14" placeholder="金額" enterkeyhint="done"></label>
         <label id="add-cycle-field"><span class="homes-sr-only">支払い</span>
-          <select id="add-cycle"><option value="monthly">毎月</option><option value="yearly">年払い</option></select>
+          <select id="add-cycle"><option value="monthly">毎月</option><option value="bimonthly">隔月</option><option value="yearly">年払い</option></select>
         </label>
         <button class="homes-btn homes-btn-primary" type="submit">追加</button>
         <datalist id="name-options"></datalist>
@@ -116,7 +116,7 @@
           <label class="homes-field"><span>金額（円）</span><input name="amount" inputmode="numeric" maxlength="14"></label>
           <label class="homes-field" data-for="entry"><span>日付</span><input name="date" type="date"></label>
           <label class="homes-field" data-for="fixed"><span>支払い</span>
-            <select name="cycle"><option value="monthly">毎月</option><option value="yearly">年払い</option></select>
+            <select name="cycle"><option value="monthly">毎月</option><option value="bimonthly">隔月</option><option value="yearly">年払い</option></select>
           </label>
         </div>
         <label class="homes-field"><span>メモ</span><input name="memo" maxlength="200" placeholder="任意"></label>
@@ -133,6 +133,6 @@
 
   <div id="toast" class="homes-toast" role="status" aria-live="polite" hidden></div>
 
-  <script type="module" src="/shared/service-entry.mjs?v=7" data-service-app="/kakeibo/app.mjs?v=1"></script>
+  <script type="module" src="/shared/service-entry.mjs?v=7" data-service-app="/kakeibo/app.mjs?v=2"></script>
 </body>
 </html>

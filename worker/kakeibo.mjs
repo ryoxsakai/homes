@@ -1,5 +1,5 @@
 // 家計 (household spending) for Homes: a rough, hand-entered picture of where money
-// goes. 固定費 are standing monthly or yearly costs; 外食・内食中食・コンビニ・生活雑貨
+// goes. 固定費 are standing monthly, bimonthly (隔月) or yearly costs; 外食・内食中食・コンビニ・生活雑貨
 // are dated entries listed by month. Who entered what is decided by the server.
 import { failure } from './state.mjs';
 import { checkRevision, isDay, rememberDeleted } from './household.mjs';
@@ -21,7 +21,7 @@ export function validateKakeibo(state) {
     reject('家計の入力形式が不正です');
   for (const f of state.fixed) {
     if (!f || !filled(f.id, 120) || !filled(f.name, 100) || !yen(f.amount, 0) ||
-        !['monthly', 'yearly'].includes(f.cycle) || !str(f.memo, 200) || !actorOK(f.addedBy))
+        !['monthly', 'bimonthly', 'yearly'].includes(f.cycle) || !str(f.memo, 200) || !actorOK(f.addedBy))
       reject('固定費の入力内容を確認してください');
   }
   for (const e of state.entries) {
