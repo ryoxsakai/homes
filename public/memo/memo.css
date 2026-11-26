@@ -183,13 +183,14 @@
   .memo-page .memo-menu {
     position: fixed;
     z-index: 9;
-    inset: auto 16px calc(12px + env(safe-area-inset-bottom));
+    inset: auto var(--homes-mobile-menu-inset) calc(12px + env(safe-area-inset-bottom));
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 2px;
-    max-width: 400px;
+    gap: var(--homes-mobile-menu-gap);
+    max-width: var(--homes-mobile-menu-max);
     margin-inline: auto;
-    padding: 6px;
+    padding: var(--homes-mobile-menu-pad);
+    box-sizing: border-box;
     border-radius: var(--homes-mobile-menu-radius);
     background: var(--works-surface);
     box-shadow: var(--works-shadow-lg);
@@ -197,7 +198,7 @@
   .memo-page .memo-menu button {
     display: grid;
     place-items: center;
-    height: 48px;
+    height: var(--homes-mobile-menu-target);
     padding: 0;
     border-radius: var(--homes-mobile-menu-radius);
     background: transparent;
@@ -207,7 +208,7 @@
   .memo-page .memo-menu .memo-list-action { display: grid; }
   .memo-page .memo-menu [aria-current="page"] { background: var(--works-ink); color: var(--works-surface); }
   .memo-page .memo-menu .memo-add-action { background: var(--works-accent-soft); }
-  .memo-menu .works-icon { width: 24px; height: 24px; }
+  .memo-menu .works-icon { width: var(--homes-mobile-menu-icon); height: var(--homes-mobile-menu-icon); }
   .memo-menu .menu-label { display: none; }
 }
 

@@ -308,12 +308,13 @@ body .todo-page .todo-main { background: var(--works-page); color: var(--works-i
 
   /* Floating, rounded, icon-only bar like 授業管理. */
   .todo-page .bottom-tabs {
-    inset: auto 16px calc(12px + env(safe-area-inset-bottom));
+    inset: auto var(--homes-mobile-menu-inset) calc(12px + env(safe-area-inset-bottom));
     z-index: 9;
-    gap: 2px;
-    max-width: 400px;
+    gap: var(--homes-mobile-menu-gap);
+    max-width: var(--homes-mobile-menu-max);
     margin: 0 auto;
-    padding: 6px;
+    padding: var(--homes-mobile-menu-pad);
+    box-sizing: border-box;
     border: 0;
     border-radius: var(--homes-mobile-menu-radius);
     background: rgb(255 255 255 / .96);
@@ -324,7 +325,7 @@ body .todo-page .todo-main { background: var(--works-page); color: var(--works-i
   .todo-page .bottom-tabs #mobile-nav {
     flex-direction: row;
     gap: 0;
-    height: 48px;
+    height: var(--homes-mobile-menu-target);
     padding: 0;
     border: 0;
     border-radius: var(--homes-mobile-menu-radius);
@@ -334,7 +335,7 @@ body .todo-page .todo-main { background: var(--works-page); color: var(--works-i
     font-size: 0;
     line-height: 0;
   }
-  .todo-page .bottom-tabs :is(svg, .works-icon, .search-icon) { width: 24px; height: 24px; color: currentColor; }
+  .todo-page .bottom-tabs :is(svg, .works-icon, .search-icon) { width: var(--homes-mobile-menu-icon); height: var(--homes-mobile-menu-icon); color: currentColor; }
   .todo-page .bottom-tabs [aria-current="page"],
   .todo-page .bottom-tabs #mobile-nav[aria-expanded="true"] {
     background: var(--works-ink);
@@ -347,7 +348,7 @@ body .todo-page .todo-main { background: var(--works-page); color: var(--works-i
   .todo-page .bottom-tabs #mobile-add {
     align-self: stretch;
     border-radius: var(--homes-mobile-menu-radius);
-    height: 48px;
+    height: var(--homes-mobile-menu-target);
     margin: 0;
     background: var(--works-accent-soft);
     color: var(--works-accent);

@@ -13,13 +13,16 @@
   <link rel="stylesheet" href="/shared/header.css?v=navigation-2">
   <link rel="stylesheet" href="/shared/works-design.css?v=4">
   <link rel="stylesheet" href="/shared/works-dialogs.css?v=fb98327c">
-  <link rel="stylesheet" href="/shared/homes-theme.css?v=1">
-  <link rel="stylesheet" href="/books/books.css?v=scanner-first-1">
+  <link rel="stylesheet" href="/shared/homes-theme.css?v=menu-unified-1">
+  <link rel="stylesheet" href="/books/books.css?v=menu-unified-1">
 </head>
 <body class="books-page">
   <header class="page-header works-header">
     <h1><a class="works-home" href="/" aria-label="Homes ホーム"><img class="page-header-icon homes-logo" src="/homes-icon.png" alt="" width="32" height="32"><span>Homes</span></a><span class="works-page-title">本棚</span></h1>
     <div class="works-header-actions">
+      <button id="open-manage" type="button" aria-haspopup="dialog" aria-controls="manage-dialog" aria-label="カテゴリ・場所の設定" title="カテゴリ・場所の設定" hidden>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.325 4.317a1.724 1.724 0 0 1 3.35 0 1.724 1.724 0 0 0 2.573 1.066 1.724 1.724 0 0 1 2.369 2.37 1.724 1.724 0 0 0 1.065 2.572 1.724 1.724 0 0 1 0 3.35 1.724 1.724 0 0 0-1.065 2.573 1.724 1.724 0 0 1-2.37 2.369 1.724 1.724 0 0 0-2.572 1.065 1.724 1.724 0 0 1-3.35 0 1.724 1.724 0 0 0-2.573-1.065 1.724 1.724 0 0 1-2.369-2.37 1.724 1.724 0 0 0-1.065-2.572 1.724 1.724 0 0 1 0-3.35 1.724 1.724 0 0 0 1.065-2.573 1.724 1.724 0 0 1 2.37-2.369 1.724 1.724 0 0 0 2.572-1.065"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
       <div id="user-bar" class="user-bar" hidden>
         <button id="sign-out" class="user-icon-btn" type="button" aria-label="ログアウト" title="ログアウト">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="9" r="3"/><path d="M5.5 18c1-3 3-4.5 6.5-4.5s5.5 1.5 6.5 4.5"/></svg>
@@ -90,10 +93,6 @@
         </label>
       </div>
           <div class="books-filter-actions">
-        <button id="open-manage" class="books-btn books-manage-action" type="button" aria-haspopup="dialog">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>
-          <span>分類と場所</span>
-        </button>
             <button id="books-reset-filters" class="books-link-btn" type="button" hidden>条件をクリア</button>
           </div>
         </div>
@@ -229,7 +228,7 @@
   <!-- カテゴリと場所の管理 -->
   <dialog id="manage-dialog" class="books-dialog" aria-labelledby="manage-title">
     <div class="books-dialog-head">
-      <h3 id="manage-title">カテゴリと場所</h3>
+      <h3 id="manage-title">カテゴリ・場所の設定</h3>
       <button class="books-icon-btn" type="button" data-close aria-label="閉じる">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
       </button>
@@ -245,12 +244,12 @@
         <ul class="books-manage-list"></ul>
         <form class="books-manage-add"><input maxlength="50" placeholder="新しい場所（例：寝室の棚）" aria-label="新しい場所"><button class="books-btn" type="submit">追加</button></form>
       </section>
-      <p class="books-hint">タグは本ごとに自由に付けられます。名前を変えると、登録済みの本にも反映されます。</p>
+      <p class="books-hint">カテゴリと場所は家族で共通です。名前を変えると、登録済みの本にも反映されます。</p>
     </div>
   </dialog>
 
   <div id="toast" class="books-toast" role="status" aria-live="polite" hidden></div>
 
-  <script type="module" src="/shared/service-entry.mjs?v=6" data-service-app="/books/app.mjs?v=scanner-first-1"></script>
+  <script type="module" src="/shared/service-entry.mjs?v=6" data-service-app="/books/app.mjs?v=shelf-settings-1"></script>
 </body>
 </html>

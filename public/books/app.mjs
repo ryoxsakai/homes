@@ -2,7 +2,10 @@
 // The shelf is one revisioned document saved through the same-origin /api/books.
 import { watchAuth, signOutUser } from '../shared/auth.js?v=14';
 import { normalizeIsbn } from './isbn.mjs';
-import { readBooksPreferences, writeBooksPreferences } from './preferences.mjs?v=borrowed-1';
+import {
+  readBooksPreferences, writeBooksPreferences, readBookEntryPreferences,
+  writeBookEntryPreferences, resolveBookEntryPreferences,
+} from './preferences.mjs?v=shelf-settings-1';
 import { prepareCoverPhoto } from './cover-photo.mjs';
 import { cameraAvailable, startScanner } from './scanner.mjs?v=2';
 
@@ -16,12 +19,17 @@ let saveQueue = Promise.resolve();
 let pending = 0;
 let broken = false;
 const ui = readBooksPreferences(localStorageSafe());
+const entryPrefs = readBookEntryPreferences(localStorageSafe());
 const displayOptions = $('#books-display-options');
 displayOptions.open = ui.filtersOpen;
 $('#search').value = ui.query;
 
 function localStorageSafe() { try { return window.localStorage; } catch { return null; } }
 const rememberPrefs = () => writeBooksPreferences(localStorageSafe(), ui);
+function rememberEntryChoice(field, value) {
+  entryPrefs[field] = value;
+  writeBookEntryPreferences(localStorageSafe(), entryPrefs);
+}
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const coverURL = book => book.photoId ? `/api/books/photo?id=${encodeURIComponent(book.photoId)}`
@@ -54,7 +62,7 @@ async function load() {
 }
 
 // Saves the whole shelf after each change, one request at a time.
-function save(message, coverChange) {
+function save(message, coverChange, onPersist) {
   const snapshot = structuredClone(shelf);
   pending++;
   $('#save-status').textContent = '保存中…';
@@ -75,6 +83,7 @@ function save(message, coverChange) {
         if (persisted.photoId) book.photoId = persisted.photoId;
         else delete book.photoId;
       }
+      onPersist?.();
       if (message) toast(message);
     } catch (error) {
       broken = true;
@@ -505,8 +514,9 @@ const editor = (() => {
     form.authors.value = src.authors.join('、');
     form.publisher.value = src.publisher;
     form.publishedDate.value = src.publishedDate;
-    options(form.location, shelf.locations, book?.location ?? '', '場所');
-    options(form.category, shelf.categories, book?.category ?? (shelf.categories.includes('絵本') ? '絵本' : ''), 'カテゴリ');
+    const optionsSource = book || resolveBookEntryPreferences(entryPrefs, shelf);
+    options(form.location, shelf.locations, optionsSource.location, '場所');
+    options(form.category, shelf.categories, optionsSource.category, 'カテゴリ');
     form.memo.value = book?.memo || '';
     tags = [...(book?.tags || [])];
     $('#tag-entry').value = '';
@@ -580,11 +590,21 @@ const editor = (() => {
   // "＋ 新しい場所…" adds an entry to the shelf's list on the spot.
   for (const [select, kind, label] of [[form.location, 'locations', '場所'], [form.category, 'categories', 'カテゴリ']]) {
     select.addEventListener('change', () => {
-      if (select.value !== NEW_OPTION) { select.dataset.previous = select.value; return; }
+      if (select.value !== NEW_OPTION) {
+        select.dataset.previous = select.value;
+        if (!current) rememberEntryChoice(select.name, select.value);
+        return;
+      }
       const name = (prompt(`新しい${label}の名前`) || '').trim().slice(0, 50);
       if (!name) { select.value = select.dataset.previous || ''; return; }
-      if (!shelf[kind].includes(name)) { shelf[kind].push(name); save(); }
-      options(select, shelf[kind], name, label);
+      const list = shelf[kind];
+      if (!list.includes(name)) {
+        if (list.length >= 200) { select.value = select.dataset.previous || ''; toast(`${label}は200件までです`); return; }
+        list.push(name);
+        save();
+      }
+      options(select, list, name, label);
+      if (!current) rememberEntryChoice(select.name, select.value);
     });
   }
 
@@ -678,6 +698,7 @@ for (const section of document.querySelectorAll('.books-manage')) {
     const button = event.target.closest('button');
     if (!button) return;
     const list = shelf[kind];
+    let updateLastChoice;
     if (button.dataset.move) {
       const i = Number(button.dataset.move);
       [list[i - 1], list[i]] = [list[i], list[i - 1]];
@@ -689,15 +710,17 @@ for (const section of document.querySelectorAll('.books-manage')) {
       list[i] = name;
       for (const b of shelf.books) if (b[field] === old) b[field] = name;
       if (ui[field] === old) ui[field] = name;
+      updateLastChoice = () => { if (entryPrefs[field] === old) rememberEntryChoice(field, name); };
     } else if (button.dataset.remove) {
       const i = Number(button.dataset.remove), old = list[i];
       const count = shelf.books.filter(b => b[field] === old).length;
       if (!confirm(count ? `「${old}」を削除しますか？ ${count}冊の${label}は未設定になります。` : `「${old}」を削除しますか？`)) return;
       list.splice(i, 1);
       for (const b of shelf.books) if (b[field] === old) b[field] = '';
+      updateLastChoice = () => { if (entryPrefs[field] === old) rememberEntryChoice(field, ''); };
     }
     renderManage();
-    save();
+    save(undefined, undefined, () => { updateLastChoice?.(); rememberPrefs(); });
   });
 }
 
@@ -783,6 +806,7 @@ watchAuth({
       $('#loading').hidden = true;
       $('#books-main').hidden = false;
       $('#user-bar').hidden = false;
+      $('#open-manage').hidden = false;
       render();
       rememberPrefs();
     } catch (error) {

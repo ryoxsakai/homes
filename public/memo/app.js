@@ -1,4 +1,4 @@
-import { startMemoPresentation } from "../shared/ui/memo-presentation.mjs";
+import { startMemoPresentation } from "../shared/ui/memo-presentation.mjs?v=header-1";
 startMemoPresentation();
 import { installInlineHandlers } from "../shared/inline-handlers.mjs";
 installInlineHandlers();

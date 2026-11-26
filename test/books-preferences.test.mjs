@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readBooksPreferences, writeBooksPreferences } from '../public/books/preferences.mjs';
+import { readBooksPreferences, writeBooksPreferences, readBookEntryPreferences, writeBookEntryPreferences, resolveBookEntryPreferences } from '../public/books/preferences.mjs';
 
 test('uses the current bookshelf settings key and migrates the old view and sort', () => {
   const storage = { getItem(key) {
@@ -33,4 +33,25 @@ test('bad or unavailable local storage is safe and defaults to a collapsed list 
   assert.deepEqual(readBooksPreferences(denied), readBooksPreferences(null));
   const corrupted = readBooksPreferences({ getItem: () => '{"status":"weird","view":"broken","query":123,"sort":"bad","filtersOpen":"yes"}' });
   assert.deepEqual(corrupted, readBooksPreferences(null));
+});
+
+test('new-book entry preferences are separate from list filtering and survive reload', () => {
+  const map = new Map();
+  const storage = { getItem: key => map.get(key), setItem: (key, value) => map.set(key, value) };
+  writeBooksPreferences(storage, { category: '絵本', location: '机', filtersOpen: true });
+  writeBookEntryPreferences(storage, { category: '', location: '本棚', title: 'do not save' });
+  assert.deepEqual(readBookEntryPreferences(storage), { category: '', location: '本棚' });
+  assert.equal(readBooksPreferences(storage).category, '絵本');
+  assert.equal(readBooksPreferences(storage).location, '机');
+});
+
+test('defaults preserve an explicit clear, reject stale values and safely fall back on first use', () => {
+  const shelf = { categories: ['絵本', '図鑑'], locations: ['本棚'] };
+  assert.deepEqual(resolveBookEntryPreferences({}, shelf), { category: '絵本', location: '' });
+  assert.deepEqual(resolveBookEntryPreferences({ category: '', location: 'gone' }, shelf), { category: '', location: '' });
+  assert.deepEqual(resolveBookEntryPreferences({ category: 'gone', location: '本棚' }, shelf), { category: '', location: '本棚' });
+  assert.deepEqual(resolveBookEntryPreferences({}, { categories: [], locations: [] }), { category: '', location: '' });
+  assert.deepEqual(readBookEntryPreferences({ getItem: () => '{bad json' }), {});
+  assert.deepEqual(readBookEntryPreferences({ getItem: () => '{"category":123,"location":["本棚"]}' }), {});
+  assert.doesNotThrow(() => writeBookEntryPreferences({ setItem() { throw Error('denied'); } }, {}));
 });

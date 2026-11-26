@@ -13,13 +13,16 @@
   <link rel="stylesheet" href="/shared/header.css?v=navigation-2">
   <link rel="stylesheet" href="/shared/works-design.css?v=4">
   <link rel="stylesheet" href="/shared/works-dialogs.css?v=fb98327c">
-  <link rel="stylesheet" href="/shared/homes-theme.css?v=1">
-  <link rel="stylesheet" href="/shared/homes-app.css?v=1">
+  <link rel="stylesheet" href="/shared/homes-theme.css?v=menu-unified-1">
+  <link rel="stylesheet" href="/shared/homes-app.css?v=menu-unified-1">
 </head>
 <body class="homes-page cleaning-page">
   <header class="page-header works-header">
     <h1><a class="works-home" href="/" aria-label="Homes ホーム"><img class="page-header-icon homes-logo" src="/homes-icon.png" alt="" width="32" height="32"><span>Homes</span></a><span class="works-page-title">掃除</span></h1>
     <div class="works-header-actions">
+      <button id="open-categories" type="button" aria-haspopup="dialog" aria-label="カテゴリ設定" title="カテゴリ設定" hidden aria-controls="category-dialog">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.325 4.317a1.724 1.724 0 0 1 3.35 0 1.724 1.724 0 0 0 2.573 1.066 1.724 1.724 0 0 1 2.369 2.37 1.724 1.724 0 0 0 1.065 2.572 1.724 1.724 0 0 1 0 3.35 1.724 1.724 0 0 0-1.065 2.573 1.724 1.724 0 0 1-2.37 2.369 1.724 1.724 0 0 0-2.572 1.065 1.724 1.724 0 0 1-3.35 0 1.724 1.724 0 0 0-2.573-1.065 1.724 1.724 0 0 1-2.369-2.37 1.724 1.724 0 0 0-1.065-2.572 1.724 1.724 0 0 1 0-3.35 1.724 1.724 0 0 0 1.065-2.573 1.724 1.724 0 0 1 2.37-2.369 1.724 1.724 0 0 0 2.572-1.065"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
       <div id="user-bar" class="user-bar" hidden>
         <button id="sign-out" class="user-icon-btn" type="button" aria-label="ログアウト" title="ログアウト">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="9" r="3"/><path d="M5.5 18c1-3 3-4.5 6.5-4.5s5.5 1.5 6.5 4.5"/></svg>
@@ -37,10 +40,6 @@
         <p id="summary" class="homes-summary"></p>
       </div>
       <div class="homes-heading-actions">
-        <button id="open-categories" class="homes-btn" type="button" aria-haspopup="dialog">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>
-          <span>カテゴリ</span>
-        </button>
         <button id="open-add" class="homes-btn homes-btn-primary" type="button" aria-haspopup="dialog">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
           <span>掃除場所を追加</span>
@@ -80,9 +79,6 @@
     <nav class="homes-bottom-menu" aria-label="掃除メニュー">
       <button id="menu-list" type="button" aria-current="page" aria-label="一覧の先頭へ" title="一覧の先頭へ">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg>
-      </button>
-      <button id="menu-categories" type="button" aria-haspopup="dialog" aria-label="カテゴリ" title="カテゴリ">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>
       </button>
       <button id="menu-add" class="homes-menu-add" type="button" aria-haspopup="dialog" aria-label="掃除場所を追加" title="掃除場所を追加">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
@@ -129,25 +125,26 @@
     </form>
   </dialog>
 
-  <!-- カテゴリ -->
+  <!-- 掃除の設定 -->
   <dialog id="category-dialog" class="homes-dialog" aria-labelledby="category-title">
     <div class="homes-dialog-head">
-      <h3 id="category-title">カテゴリ</h3>
+      <h3 id="category-title">カテゴリ設定</h3>
       <button class="homes-icon-btn" type="button" data-close aria-label="閉じる">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
       </button>
     </div>
     <div class="homes-dialog-body">
-      <section class="homes-manage">
+      <section class="homes-manage" aria-labelledby="category-section-title">
+        <h4 id="category-section-title">カテゴリ管理</h4>
         <ul class="homes-manage-list"></ul>
         <form class="homes-manage-add"><input maxlength="50" placeholder="新しいカテゴリ（例：ベランダ）" aria-label="新しいカテゴリ"><button class="homes-btn" type="submit">追加</button></form>
       </section>
-      <p class="homes-hint">名前を変えると登録済みの場所にも反映されます。</p>
+      <p class="homes-hint">カテゴリを追加・並べ替え・編集できます。名前を変えると登録済みの場所にも反映されます。</p>
     </div>
   </dialog>
 
   <div id="toast" class="homes-toast" role="status" aria-live="polite" hidden></div>
 
-  <script type="module" src="/shared/service-entry.mjs?v=6" data-service-app="/cleaning/app.mjs?v=1"></script>
+  <script type="module" src="/shared/service-entry.mjs?v=6" data-service-app="/cleaning/app.mjs?v=2"></script>
 </body>
 </html>

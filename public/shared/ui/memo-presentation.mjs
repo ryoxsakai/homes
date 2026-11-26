@@ -6,7 +6,8 @@ const controls='button,input,select,textarea,.memo-card,.todo-modal,#save-status
 export function decorateMemo(root) {
   const nodes=[...(root.matches?.(controls)?[root]:[]),...root.querySelectorAll(controls)];
   for(const el of nodes) {
-    if(el.closest('#view-body-container,#modal-tags-list'))continue;
+    // Header controls use the shared Homes geometry, not Memo's Bootstrap padding.
+    if(el.closest('.works-header,#view-body-container,#modal-tags-list'))continue;
     if(el.matches('button.tab-btn')) {
       el.classList.add('nav-link');
     } else if(el.matches('button')) {
