@@ -1,5 +1,5 @@
 import { avatarResponse, trustedPicture } from './avatar.mjs';
-import { authorizedMember, readMembers } from './members.mjs';
+import { mergeMembers, readMembers, signedInMember as authorizedMember } from './members.mjs';
 import { handleHomesData } from './data.mjs';
 import { isInstallPath, installResponse } from './install.mjs';
 import { signInCsp, signInPage } from './sign-in.mjs';
@@ -85,9 +85,20 @@ export function createApp({ upstream = fetch, verify = readGoogleIdentity, asset
       const portalPath = isPortalPath(url.pathname);
       const dataResponse = (status, error) => response(status, JSON.stringify({error}), {type:'application/json; charset=utf-8'});
       if (!paths.has(url.pathname) && !dataPath && !portalPath && !avatarPath) return fail(404, 'ページがありません');
-      const members = readMembers(env);
-      if (!configured(env, members)) return dataPath ? dataResponse(503, 'unavailable') : fail(503, 'Homesのログインは準備中です');
+      const baseMembers = readMembers(env);
+      if (!configured(env, baseMembers)) return dataPath ? dataResponse(503, 'unavailable') : fail(503, 'Homesのログインは準備中です');
       if (!approvedOrigin) return dataPath ? dataResponse(404, 'not_found') : fail(404, 'ページがありません');
+      // Members added and names set on the admin settings screen join the secret's list.
+      // Only a request that can identify someone (a session, or the sign-in callback)
+      // reads them; anonymous requests never touch the database.
+      let directory = null;
+      if (readCookie(request, sessionCookie) || url.pathname === '/auth/callback') {
+        try {
+          const directoryStore = env.AUTH_STORE.get(env.AUTH_STORE.idFromName('homes-auth-v1'));
+          if (typeof directoryStore.memberDirectory === 'function') directory = await directoryStore.memberDirectory();
+        } catch { return dataPath ? dataResponse(503, 'unavailable') : fail(503, '一時的に利用できません'); }
+      }
+      const members = mergeMembers(baseMembers, directory, env);
       // Existing Worker-host cookies and pending attempts keep their original storage keys.
       // On the custom host even a copied token cannot be replayed against the other host.
       const authKey = value => digest(url.origin === customOrigin ? customOrigin + '|' + value : value);
@@ -115,7 +126,7 @@ export function createApp({ upstream = fetch, verify = readGoogleIdentity, asset
           const session = url.pathname === '/api/me' && typeof auth.readAvatar === 'function'
             ? await auth.readAvatar(key) : await auth.readSession(key);
           const member = authorizedMember(session, members);
-          return await handleHomesData(request, env, member, response, {hasPicture: Boolean(trustedPicture(session?.picture))});
+          return await handleHomesData(request, env, member, response, {hasPicture: Boolean(trustedPicture(session?.picture)), members});
         } catch { return dataResponse(503, 'unavailable'); }
       }
       if (portalPath) {

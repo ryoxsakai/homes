@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>設定 | Homes</title>
+  <link rel="apple-touch-icon" sizes="600x600" href="/homes-icon.png">
+  <link rel="manifest" href="/homes.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Homes">
+  <script src="/shared/theme-init.js?v=1"></script>
+  <link rel="stylesheet" href="/shared/header.css?v=navigation-2">
+  <link rel="stylesheet" href="/shared/works-design.css?v=4">
+  <link rel="stylesheet" href="/shared/works-dialogs.css?v=fb98327c">
+  <link rel="stylesheet" href="/shared/homes-theme.css?v=menu-unified-2">
+  <link rel="stylesheet" href="/shared/homes-app.css?v=menu-unified-1">
+  <link rel="stylesheet" href="/settings/settings.css?v=1">
+</head>
+<body class="homes-page settings-page">
+  <header class="page-header works-header">
+    <h1><a class="works-home" href="/" aria-label="Homes ホーム"><img class="page-header-icon homes-logo" src="/homes-icon.png" alt="" width="32" height="32"><span>Homes</span></a><span class="works-page-title">設定</span></h1>
+    <div class="works-header-actions">
+      <div id="user-bar" class="user-bar" hidden>
+        <button id="sign-out" class="user-icon-btn" type="button" aria-label="ログアウト" title="ログアウト">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="9" r="3"/><path d="M5.5 18c1-3 3-4.5 6.5-4.5s5.5 1.5 6.5 4.5"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <p id="loading" class="homes-loading" role="status">読み込み中…</p>
+
+  <main id="app-main" class="homes-main settings-main" hidden>
+    <div class="homes-heading">
+      <div>
+        <h2>設定</h2>
+        <p class="homes-summary">管理者だけが見られる画面です。</p>
+      </div>
+    </div>
+
+    <section class="settings-section" aria-labelledby="members-title">
+      <h3 id="members-title">メンバー</h3>
+      <p class="homes-hint">Googleアカウントでログインできる家族です。表示名は、ToDoや家計などの「誰が入力したか」に使われます。表示名を変えると、これまでの記録も新しい名前になります。</p>
+      <ul id="member-list" class="homes-panel"></ul>
+    </section>
+
+    <section class="settings-section" aria-labelledby="add-title">
+      <h3 id="add-title">メンバーを追加</h3>
+      <form id="add-form" class="settings-card" autocomplete="off" novalidate>
+        <label class="homes-field"><span>Googleアカウントのメールアドレス<em>必須</em></span><input name="email" type="email" maxlength="254" placeholder="example@gmail.com" autocapitalize="off" spellcheck="false"></label>
+        <label class="homes-field"><span>表示名<em>必須</em></span><input name="alias" maxlength="40" placeholder="例：パパ・ママ・名前"></label>
+        <details class="settings-advanced" id="sub-details">
+          <summary>Gmail以外のアドレスの場合</summary>
+          <label class="homes-field"><span>GoogleアカウントID（sub）</span><input name="sub" maxlength="255" inputmode="numeric" autocapitalize="off" spellcheck="false"></label>
+          <p class="homes-hint">Gmail以外のアドレスは、なりすましを防ぐため、本人に確認したGoogleアカウントの固有ID（数字の列）も必要です。</p>
+        </details>
+        <div><button class="homes-btn homes-btn-primary" type="submit">追加する</button></div>
+      </form>
+    </section>
+    <p id="save-status" class="homes-save-status" role="status" aria-live="polite"></p>
+  </main>
+
+  <div id="toast" class="homes-toast" role="status" aria-live="polite" hidden></div>
+
+  <script type="module" src="/shared/service-entry.mjs?v=7" data-service-app="/settings/app.mjs?v=1"></script>
+</body>
+</html>

@@ -2,6 +2,7 @@ import { MAX_DOCUMENT_BYTES } from './state.mjs';
 import { fetchCover, lookupBook, normalizeTitleQuery, searchBooksByTitle } from './books.mjs';
 import { MAX_PHOTO_BASE64, PHOTO_ID } from './books-photos.mjs';
 import { fetchLegacyCleaning } from './household.mjs';
+import { handleSettings } from './settings.mjs';
 
 const HOUSEHOLD_STORE_NAME = 'homes-data-v1:household';
 const CLONE_REQUEST = /^[a-zA-Z0-9_-]{16,100}$/;
@@ -13,6 +14,8 @@ const jsonBodyType = /^application\/json\s*(?:;\s*charset\s*=\s*(?:"utf-8"|utf-8
 //   GET|PUT /api/memo
 //   GET|PUT /api/books, GET /api/books/lookup?isbn=…, GET /api/books/search?title=…, GET /api/books/cover?id=…
 //   GET|PUT /api/grocery, GET|PUT /api/cleaning, GET /api/cleaning/legacy (preview), POST /api/cleaning/import
+//   GET|PUT /api/kakeibo
+//   GET|POST|PUT|DELETE /api/settings/members (admin only)
 const routes = {
   '/api/me': ['GET'],
   '/api/todo': ['GET', 'PUT'],
@@ -27,6 +30,8 @@ const routes = {
   '/api/cleaning': ['GET', 'PUT'],
   '/api/cleaning/legacy': ['GET'],
   '/api/cleaning/import': ['POST'],
+  '/api/kakeibo': ['GET', 'PUT'],
+  '/api/settings/members': ['GET', 'POST', 'PUT', 'DELETE'],
 };
 // The only GET requests that take a query string, each with exactly one parameter.
 const queries = {
@@ -66,7 +71,7 @@ export async function readBoundedJson(request, limit = MAX_DOCUMENT_BYTES) {
   }
 }
 
-export async function handleHomesData(request, env, member, respond, {hasPicture = false} = {}) {
+export async function handleHomesData(request, env, member, respond, {hasPicture = false, members = null} = {}) {
   const json = (status, val) => respond(status, JSON.stringify(val), {type:'application/json; charset=utf-8'});
   const error = (status, code) => json(status, {error:code});
   if (!member) return error(401, 'unauthorized');
@@ -87,7 +92,18 @@ export async function handleHomesData(request, env, member, respond, {hasPicture
   if ((requestOrigin !== null && requestOrigin !== origin) ||
       (fetchSite !== null && !['same-origin', 'none'].includes(fetchSite)) ||
       (method !== 'GET' && requestOrigin !== origin)) return error(403, 'forbidden');
-  if (pathname === '/api/me') return json(200, {name: member.alias, hasPicture});
+  if (pathname === '/api/me') return json(200, {name: member.alias, hasPicture, admin: !!member.admin});
+  if (pathname === '/api/settings/members') {
+    if (!member.admin || !members) return error(403, 'forbidden');
+    let body = null;
+    if (method !== 'GET') {
+      const [status, parsed] = await readBoundedJson(request, 4096);
+      if (status !== 200) return error(status, parsed);
+      body = parsed;
+    }
+    try { return await handleSettings({method, body, member, members, env, json}); }
+    catch { return error(503, 'unavailable'); }
+  }
   if (pathname === '/api/books/cover') {
     const cover = await fetchCover(searchParams.get('id'));
     return cover ? respond(200, cover.body, {type: cover.type, cache: 'private, max-age=604800'}) : respond(404, null, {type: 'text/plain; charset=utf-8'});
@@ -130,7 +146,7 @@ export async function handleHomesData(request, env, member, respond, {hasPicture
       if (status !== 200) return error(status, body);
       result = pathname === '/api/memo' ? await store.putMemo(body)
         : pathname === '/api/books' ? await store.putBooks(body, member.alias)
-        : pathname === '/api/grocery' || pathname === '/api/cleaning' ? await store.putHousehold(pathname.slice('/api/'.length), body, member.alias)
+        : ['/api/grocery', '/api/cleaning', '/api/kakeibo'].includes(pathname) ? await store.putHousehold(pathname.slice('/api/'.length), body, member.alias)
         : pathname === '/api/todo' ? await store.putTodo(body, member.alias)
         : await store.cloneTodo(body, member.alias);
     }

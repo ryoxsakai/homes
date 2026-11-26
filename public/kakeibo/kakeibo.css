@@ -1,0 +1,47 @@
+/* 家計: month switcher, category tabs with totals, amount column. Built on homes-app.css. */
+.kakeibo-month { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 10px; }
+.kakeibo-month strong { min-width: 7.5em; font-size: 16px; text-align: center; font-variant-numeric: tabular-nums; }
+.kakeibo-month-total { flex: 1 1 auto; margin: 0; color: var(--works-ink-2); font-size: 13px; text-align: right; }
+.kakeibo-month-total b { color: var(--works-ink); font-size: 16px; font-variant-numeric: tabular-nums; }
+
+/* Tabs: label plus that tab's total; one row that scrolls sideways on phones. */
+.kakeibo-tabs {
+  display: flex; gap: 4px; margin-top: 10px; padding: 3px; border-radius: 10px; background: var(--works-track);
+  overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain;
+}
+.kakeibo-tabs::-webkit-scrollbar { display: none; }
+.kakeibo-tabs button {
+  display: grid; justify-items: center; flex: 1 0 auto; gap: 0; min-height: 48px; min-width: 88px; padding: 4px 12px;
+  border: 0; border-radius: 8px; background: transparent; color: var(--works-ink-2); font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.kakeibo-tabs button small { color: var(--works-ink-2); font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.kakeibo-tabs [aria-selected="true"] { background: var(--works-surface); color: var(--works-ink); box-shadow: var(--works-shadow-sm); }
+.kakeibo-tabs [aria-selected="true"] small { color: var(--works-accent-strong); font-weight: 700; }
+.kakeibo-tabs button:focus-visible { outline: 2px solid var(--works-accent); outline-offset: -2px; }
+
+.kakeibo-add { grid-template-columns: minmax(0, 1fr) minmax(110px, 160px) auto auto; }
+.kakeibo-add:not(.is-fixed) #add-cycle-field { display: none; }
+.kakeibo-add:not(.is-fixed) { grid-template-columns: minmax(0, 1fr) minmax(110px, 160px) auto; }
+.kakeibo-yen { position: relative; }
+.kakeibo-yen input { padding-left: 26px; text-align: right; font-variant-numeric: tabular-nums; }
+.kakeibo-yen::before { content: "¥"; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--works-ink-2); pointer-events: none; }
+.kakeibo-note { margin: 10px 0 0; color: var(--works-ink-2); font-size: 13px; }
+.kakeibo-note:empty { display: none; }
+.kakeibo-note b { color: var(--works-ink); font-variant-numeric: tabular-nums; }
+.kakeibo-amount { flex: none; padding-right: 8px; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+.kakeibo-amount small { display: block; color: var(--works-ink-2); font-size: 11px; font-weight: 500; }
+.kakeibo-day { margin: 14px 0 0; padding: 0 4px; color: var(--works-ink-2); font-size: 12px; font-weight: 700; }
+.kakeibo-day + .homes-panel { margin-top: 6px; }
+
+@media (max-width: 730px) {
+  .kakeibo-month { gap: 0 4px; }
+  .kakeibo-month strong { min-width: 0; padding: 0 4px; }
+  .kakeibo-month-total { flex-basis: 100%; text-align: left; font-size: 12px; }
+  .kakeibo-month-total b { font-size: 13px; }
+  .kakeibo-tabs { margin-inline: -16px; padding-inline: 16px; border-radius: 0; background: transparent; }
+  .kakeibo-tabs button { min-width: 84px; background: var(--works-track); }
+  .kakeibo-tabs [aria-selected="true"] { background: var(--works-surface); }
+  .kakeibo-add, .kakeibo-add:not(.is-fixed) { grid-template-columns: minmax(0, 1fr) minmax(96px, 120px); }
+  .kakeibo-add button[type="submit"] { grid-column: 1 / -1; }
+  .kakeibo-add #add-cycle-field { grid-column: 1 / -1; }
+}

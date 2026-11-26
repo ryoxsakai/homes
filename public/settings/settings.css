@@ -1,0 +1,12 @@
+/* 設定 (administrator only). Built on homes-app.css. */
+.settings-main { max-width: 760px; }
+.settings-section { margin-top: 24px; }
+.settings-section h3 { margin: 0 0 4px; font-size: 16px; }
+.settings-card { display: grid; gap: 12px; margin-top: 10px; padding: 16px; border-radius: 8px; background: var(--works-surface); box-shadow: var(--works-shadow); }
+.settings-member { display: grid; flex: 1; gap: 2px; min-width: 0; padding: 6px 0; }
+.settings-member .homes-row-title { display: flex; align-items: center; gap: 6px; }
+.settings-email { overflow: hidden; color: var(--works-ink-2); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.settings-badge { flex: none; padding: 0 8px; border-radius: 999px; background: var(--works-accent-soft); color: var(--works-accent-strong); font-size: 11px; font-weight: 700; line-height: 20px; }
+.settings-actions { display: flex; flex: none; gap: 4px; }
+.settings-advanced summary { color: var(--works-ink-2); font-size: 13px; font-weight: 600; cursor: pointer; }
+.settings-advanced[open] { display: grid; gap: 8px; }

@@ -28,13 +28,13 @@ export const emptyCleaning = () => ({
 // the same id again) restores who added, bought or cleaned it instead of crediting
 // the person who pressed undo. The stash is server-only and bounded.
 const DELETED_KEPT = 50;
-function rememberDeleted(current, nextIds, pick) {
+export function rememberDeleted(current, nextIds, pick) {
   const gone = [...current.liveItems].filter(i => !nextIds.has(i.id)).map(pick);
   const kept = (current.deleted ?? []).filter(d => !nextIds.has(d.id) && !gone.some(g => g.id === d.id));
   return [...kept, ...gone].slice(-DELETED_KEPT);
 }
 
-function checkRevision(current, input, label) {
+export function checkRevision(current, input, label) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) reject(label + 'の入力形式が不正です');
   if (!Number.isSafeInteger(input.revision) || input.revision < 0) reject('revision is required');
   if (input.revision !== current.revision) throw failure(409, '別の画面で変更されています。再読み込みしてください');
@@ -190,4 +190,21 @@ export async function fetchLegacyCleaning(upstream = fetch) {
   } catch {
     return { error: { status: 503, message: '以前のデータを読み取れませんでした' } };
   }
+}
+
+// Settings renamed a member: rewrite that name wherever a document records who
+// created, updated, completed, added, bought, cleaned or entered something.
+const ACTOR_KEYS = new Set(['createdBy', 'updatedBy', 'completedBy', 'addedBy', 'purchasedBy', 'lastCleanedBy', 'by']);
+export function renameActorFields(data, from, to) {
+  let changed = 0;
+  const walk = value => {
+    if (Array.isArray(value)) { value.forEach(walk); return; }
+    if (!value || typeof value !== 'object') return;
+    for (const [key, inner] of Object.entries(value)) {
+      if (ACTOR_KEYS.has(key) && inner === from) { value[key] = to; changed++; }
+      else walk(inner);
+    }
+  };
+  walk(data);
+  return changed;
 }

@@ -1,4 +1,4 @@
-export const servicePaths = ['/todo/', '/memo/', '/grocery/', '/cleaning/', '/books/'];
+export const servicePaths = ['/todo/', '/memo/', '/kakeibo/', '/grocery/', '/cleaning/', '/books/'];
 const key = 'homes_last_service';
 
 export function lastService() {
