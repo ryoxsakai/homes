@@ -2,9 +2,9 @@ import { installHead } from './install.mjs';
 
 // Every Works-derived page and asset is private: the Worker serves it from the
 // static-assets binding only to a signed-in family member (run_worker_first).
-const pagePaths = new Set(['/app', '/todo', '/todo/', '/memo', '/memo/', '/grocery', '/grocery/', '/cleaning', '/cleaning/', '/books', '/books/']);
-const assetPrefixes = ['/todo/', '/memo/', '/grocery/', '/cleaning/', '/books/', '/shared/', '/dashboard/vendor/'];
-const canonical = new Map([['/todo', '/todo/'], ['/memo', '/memo/'], ['/grocery', '/grocery/'], ['/cleaning', '/cleaning/'], ['/books', '/books/']]);
+const pagePaths = new Set(['/app', '/todo', '/todo/', '/memo', '/memo/', '/kakeibo', '/kakeibo/', '/settings', '/settings/', '/grocery', '/grocery/', '/cleaning', '/cleaning/', '/books', '/books/']);
+const assetPrefixes = ['/todo/', '/memo/', '/kakeibo/', '/settings/', '/grocery/', '/cleaning/', '/books/', '/shared/', '/dashboard/vendor/'];
+const canonical = new Map([['/todo', '/todo/'], ['/memo', '/memo/'], ['/kakeibo', '/kakeibo/'], ['/settings', '/settings/'], ['/grocery', '/grocery/'], ['/cleaning', '/cleaning/'], ['/books', '/books/']]);
 
 export const appCsp = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; manifest-src 'self'; font-src 'self'; frame-src 'self'; frame-ancestors 'self'; base-uri 'none'; object-src 'none'; form-action 'self'";
 
@@ -22,6 +22,8 @@ export async function portalResponse(request, url, member, assets, respond) {
       : respond(404);
   }
   if (request.method !== 'GET') return respond(405);
+  // The settings screen and its files exist only for the administrator.
+  if ((url.pathname === '/settings' || url.pathname.startsWith('/settings/')) && !member.admin) return respond(404);
   if (url.pathname === '/app') {
     if (url.search) return respond(303, null, { location: '/app' });
     return respond(200, appShell, { referrer: 'same-origin', csp: appCsp });

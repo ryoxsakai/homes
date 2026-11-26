@@ -65,7 +65,7 @@ test('documents are private JSON on the canonical host, with the Works planner f
   assert.deepEqual(f.calls().at(-1),['read','todo']);
   assert.equal((await (await f.call('/api/memo')).json()).plannerVersion,undefined);
   assert.deepEqual(f.calls().at(-1),['read','memo']);
-  assert.deepEqual(await (await f.call('/api/me')).json(),{name:'管理者',hasPicture:false});
+  assert.deepEqual(await (await f.call('/api/me')).json(),{name:'管理者',hasPicture:false,admin:true});
   for (const headers of [{Origin:'https://other.example.test'},{'Sec-Fetch-Site':'cross-site'},{'Sec-Fetch-Site':'same-site'}]) {
     const denied = await f.call('/api/todo',{headers});
     assert.equal(denied.status,403);
@@ -126,7 +126,7 @@ test('family mode revokes removed members with valid sessions', async () => {
   f.setSubject({email:'bob@example.test', sub:'other-b'});
   assert.equal((await f.call('/api/me')).status, 401);
   f.setSubject({email:'bob@example.test', sub:'subject-b'});
-  assert.deepEqual(await (await f.call('/api/me')).json(), {name:'家族B',hasPicture:false});
+  assert.deepEqual(await (await f.call('/api/me')).json(), {name:'家族B',hasPicture:false,admin:false});
   f.env.HOMES_FAMILY_MEMBERS = JSON.stringify(members.slice(0, 1));
   assert.equal((await f.call('/api/me')).status, 401);
   for (const raw of ['', '{}', '[]', JSON.stringify([...members,{email:'x@gmail.com',alias:'家族A'}]),

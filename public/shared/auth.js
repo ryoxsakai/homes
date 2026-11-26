@@ -49,7 +49,7 @@ export async function watchAuth({ onSignedIn, onSignedOut }) {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const me = await response.json();
     signedIn = true;
-    const user = { email: me.name, name: me.name, picture: me.hasPicture === true ? "/avatar" : "" };
+    const user = { email: me.name, name: me.name, picture: me.hasPicture === true ? "/avatar" : "", admin: me.admin === true };
     publish(user);
     await onSignedIn?.(user);
   } catch {

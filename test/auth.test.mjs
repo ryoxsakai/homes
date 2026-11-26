@@ -180,7 +180,7 @@ test('avatar is same-origin, session-specific, private, allowlist-checked and no
   assert.equal((await f.call('/avatar')).status,404);
   const headers = await login(f);
   const me = await f.call('/api/me',{headers});
-  assert.deepEqual(await me.json(),{name:'管理者',hasPicture:true});
+  assert.deepEqual(await me.json(),{name:'管理者',hasPicture:true,admin:true});
   assert.equal((await f.call('/avatar?url=https://example.org',{headers})).status,404);
   assert.equal((await f.call('/avatar',{headers,method:'POST'})).status,405);
   assert.equal((await f.app.fetch(new Request('https://homes.lrnr.jp/avatar',{headers}),f.env)).status,404);
@@ -210,7 +210,7 @@ test('avatar is same-origin, session-specific, private, allowlist-checked and no
 
 test('legacy/missing picture remains a valid login and avatar failures produce the fallback', async () => {
   const legacy = fixture(), headers = await login(legacy);
-  assert.deepEqual(await (await legacy.call('/api/me',{headers})).json(),{name:'管理者',hasPicture:false});
+  assert.deepEqual(await (await legacy.call('/api/me',{headers})).json(),{name:'管理者',hasPicture:false,admin:true});
   assert.equal((await legacy.call('/avatar',{headers})).status,404);
   const cases = [
     () => Response.redirect('https://elsewhere.example/private'),

@@ -10,6 +10,30 @@ export class HomesAuthStore extends DurableObject {
     this.sql.exec('CREATE TABLE IF NOT EXISTS attempts (key TEXT PRIMARY KEY, nonce TEXT NOT NULL, verifier TEXT NOT NULL, expiry INTEGER NOT NULL)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS sessions (key TEXT PRIMARY KEY, email TEXT NOT NULL, sub TEXT NOT NULL, expiry INTEGER NOT NULL)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS session_avatars (key TEXT PRIMARY KEY, picture TEXT NOT NULL)');
+    // Members added and display names set from the admin settings screen.
+    this.sql.exec('CREATE TABLE IF NOT EXISTS added_members (email TEXT PRIMARY KEY, alias TEXT NOT NULL, sub TEXT)');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS member_names (email TEXT PRIMARY KEY, alias TEXT NOT NULL)');
+  }
+  async memberDirectory() {
+    return {
+      added: this.sql.exec('SELECT email, alias, sub FROM added_members ORDER BY rowid').toArray(),
+      names: this.sql.exec('SELECT email, alias FROM member_names').toArray(),
+    };
+  }
+  async addMember(email, alias, sub) {
+    this.sql.exec('INSERT INTO added_members VALUES (?, ?, ?)', email, alias, sub);
+  }
+  async setMemberName(email, alias) {
+    this.sql.exec('INSERT INTO member_names VALUES (?, ?) ON CONFLICT(email) DO UPDATE SET alias = excluded.alias', email, alias);
+  }
+  // Removing a member also ends their sessions at once.
+  async removeMember(email) {
+    this.ctx.storage.transactionSync(() => {
+      this.sql.exec('DELETE FROM added_members WHERE email = ?', email);
+      this.sql.exec('DELETE FROM member_names WHERE email = ?', email);
+      this.sql.exec('DELETE FROM session_avatars WHERE key IN (SELECT key FROM sessions WHERE email = ?)', email);
+      this.sql.exec('DELETE FROM sessions WHERE email = ?', email);
+    });
   }
   async putState(key, nonce, verifier) {
     this.sql.exec('DELETE FROM attempts WHERE expiry <= ?', sec());

@@ -2,11 +2,12 @@ import { DurableObject } from 'cloudflare:workers';
 import { MAX_DOCUMENT_BYTES, cloneTodo, emptyMemo, emptyTodo, failure, migrateLegacy, nextMemo, nextTodo } from './state.mjs';
 import { emptyBooks, nextBooks } from './books.mjs';
 import { readCoverChange } from './books-photos.mjs';
-import { emptyCleaning, emptyGrocery, importCleaning, nextCleaning, nextGrocery } from './household.mjs';
+import { emptyCleaning, emptyGrocery, importCleaning, nextCleaning, nextGrocery, renameActorFields } from './household.mjs';
+import { emptyKakeibo, nextKakeibo } from './kakeibo.mjs';
 
-const KINDS = ['todo', 'memo', 'books', 'grocery', 'cleaning'];
-const empty = { todo: emptyTodo, memo: emptyMemo, books: emptyBooks, grocery: emptyGrocery, cleaning: emptyCleaning };
-const nextDocument = { grocery: nextGrocery, cleaning: nextCleaning };
+const KINDS = ['todo', 'memo', 'books', 'grocery', 'cleaning', 'kakeibo'];
+const empty = { todo: emptyTodo, memo: emptyMemo, books: emptyBooks, grocery: emptyGrocery, cleaning: emptyCleaning, kakeibo: emptyKakeibo };
+const nextDocument = { grocery: nextGrocery, cleaning: nextCleaning, kakeibo: nextKakeibo };
 
 // One household document per service (Works' todo_state / memo_state model),
 // each with a revision for optimistic concurrency. Every operation runs inside a
@@ -149,6 +150,23 @@ export class HomesDataStore extends DurableObject {
     return this.#run(() => {
       const current = this.#read(kind);
       return { value: withoutDeleted(this.#write(kind, nextDocument[kind](current, input, actor), current.revision + 1)) };
+    });
+  }
+
+  // A member's display name changed in settings: rewrite the names already recorded
+  // as who created, updated, completed, added, bought, cleaned or entered something.
+  // Revisions stay as they are; saves always take these fields from the server copy.
+  renameActor(from, to) {
+    if (typeof from !== 'string' || !from || typeof to !== 'string' || !to) throw Error('Names required');
+    return this.#run(() => {
+      let changed = 0;
+      for (const row of this.sql.exec('SELECT kind, data FROM documents').toArray()) {
+        const data = JSON.parse(row.data);
+        const count = renameActorFields(data, from, to);
+        if (count) this.sql.exec('UPDATE documents SET data = ? WHERE kind = ?', JSON.stringify(data), row.kind);
+        changed += count;
+      }
+      return { value: { changed } };
     });
   }
 

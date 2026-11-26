@@ -79,3 +79,9 @@ html:root[data-theme] {
 .todo-page .homes-actors { margin: 4px 0 12px; color: var(--works-ink-2); font-size: 12px; }
 .todo-page .homes-actors:empty { display: none; }
 .memo-page .memo-chip:empty { display: none; }
+
+/* 設定 (administrator only) sits apart at the end of the menu, never in the service bar. */
+.works-navigation nav a.homes-nav-settings { margin-top: 12px; position: relative; }
+.works-navigation nav a.homes-nav-settings::before {
+  content: ""; position: absolute; left: 8px; right: 8px; top: -7px; border-top: 1px solid var(--works-line);
+}

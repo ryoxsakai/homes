@@ -44,3 +44,41 @@ export function authorizedMember(session, members) {
   const member = members.get(email);
   return member && (member.sub === null ? email.endsWith('@gmail.com') : member.sub === session.sub) ? member : null;
 }
+
+export { normalEmail, SUB as MEMBER_SUB, LABEL as MEMBER_LABEL };
+export const MAX_MEMBERS = 32;
+
+// The administrator is HOMES_ADMIN_EMAIL, or else the original single-owner setting
+// HOMES_OWNER_EMAIL (with HOMES_OWNER_SUB when set). With neither, nobody is admin.
+export function adminIdentity(env) {
+  const explicit = normalEmail(env.HOMES_ADMIN_EMAIL);
+  if (explicit) return { email: explicit, sub: null };
+  const owner = normalEmail(env.HOMES_OWNER_EMAIL);
+  if (!owner) return null;
+  const sub = typeof env.HOMES_OWNER_SUB === 'string' && SUB.test(env.HOMES_OWNER_SUB) ? env.HOMES_OWNER_SUB : null;
+  return { email: owner, sub };
+}
+
+// Members from the Worker secret are the fixed base. The settings screen can add
+// members and change any member's display name; those live in the auth store.
+export function mergeMembers(base, directory, env) {
+  const names = new Map((directory?.names ?? []).map(n => [n.email, n.alias]));
+  const admin = adminIdentity(env);
+  const map = new Map();
+  for (const [email, m] of base) map.set(email, { ...m, email, alias: names.get(email) ?? m.alias, source: 'secret' });
+  for (const a of directory?.added ?? []) {
+    if (map.has(a.email) || map.size >= MAX_MEMBERS) continue;
+    map.set(a.email, { email: a.email, alias: names.get(a.email) ?? a.alias, sub: a.sub ?? null, source: 'added' });
+  }
+  for (const m of map.values()) m.admin = !!admin && m.email === admin.email;
+  map.adminSub = admin?.sub ?? null;
+  return map;
+}
+
+// authorizedMember plus the admin flag, which also checks HOMES_OWNER_SUB when the
+// owner setting is what names the administrator.
+export function signedInMember(session, members) {
+  const member = authorizedMember(session, members);
+  if (!member) return null;
+  return { ...member, admin: !!member.admin && (!members.adminSub || session.sub === members.adminSub) };
+}

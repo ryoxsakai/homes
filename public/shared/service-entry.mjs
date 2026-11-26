@@ -40,7 +40,7 @@ if (!embedded && window === top && mobile && hasSession() &&
       if (location.pathname === '/memo/')
         return !document.querySelector('.memo-main').hidden ||
           document.querySelector('#login-loading').textContent.includes('失敗');
-      if (['/', '/tutor/', '/admission/', '/material/', '/grocery/', '/cleaning/', '/books/'].includes(location.pathname)) return document.body.dataset.serviceReady === 'true';
+      if (['/', '/tutor/', '/admission/', '/material/', '/kakeibo/', '/settings/', '/grocery/', '/cleaning/', '/books/'].includes(location.pathname)) return document.body.dataset.serviceReady === 'true';
       const signedIn = document.querySelector('#signed-in');
       return !signedIn || !signedIn.hidden;
     };
