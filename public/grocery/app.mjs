@@ -6,15 +6,19 @@ import { $, esc, collator, today, addDays, daysBetween, shortDay, dueLabel, toas
 
 const PREFS_KEY = 'homes-grocery-view';
 let state = { toBuy: [], purchased: [], categories: [] };
-const ui = { view: 'tobuy', category: '*', sort: 'expiry' };
+let loaded = false;
+const ui = { view: 'tobuy', category: '*', addCategory: null, sort: 'expiry' };
 try { Object.assign(ui, pick(JSON.parse(localStorage.getItem(PREFS_KEY) || '{}'))); } catch {}
 function pick(saved) {
   const out = {};
   if (['tobuy', 'bought'].includes(saved.view)) out.view = saved.view;
   if (['expiry', 'bought-desc', 'name'].includes(saved.sort)) out.sort = saved.sort;
+  for (const key of ['category', 'addCategory']) {
+    if (typeof saved[key] === 'string' && saved[key].length <= 50) out[key] = saved[key];
+  }
   return out;
 }
-const remember = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ view: ui.view, sort: ui.sort })); } catch {} };
+const remember = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify(ui)); } catch {} };
 
 const doc = createDocument('/api/grocery', {
   render: () => render(),
@@ -47,6 +51,7 @@ const matchesCategory = item => ui.category === '*' || item.category === ui.cate
 const CHECK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>';
 
 function render() {
+  if (!loaded) return;
   const expired = state.purchased.filter(i => i.expiryDate && daysBetween(today(), i.expiryDate) < 0).length;
   const soon = state.purchased.filter(i => i.expiryDate && (d => d >= 0 && d <= 3)(daysBetween(today(), i.expiryDate))).length;
   $('#summary').innerHTML = [`買うもの ${state.toBuy.length}件`,
@@ -57,11 +62,14 @@ function render() {
   $('#view-tobuy').hidden = ui.view !== 'tobuy';
   $('#view-bought').hidden = ui.view !== 'bought';
   document.querySelector('[data-for="bought"]').hidden = ui.view !== 'bought';
-  ui.category = categoryOptions($('#filter-category'), state.categories, ui.category, { any: 'カテゴリ' });
+  const savedFilter = ui.category;
+  const savedAdd = ui.addCategory;
+  ui.category = categoryOptions($('#filter-category'), state.categories, savedFilter, { any: 'すべてのカテゴリ' });
+  const shownAdd = categoryOptions($('#add-category'), state.categories, savedAdd);
+  if (savedAdd !== null && savedAdd !== shownAdd) ui.addCategory = null;
+  if (ui.category !== savedFilter || ui.addCategory !== savedAdd) remember();
   $('#filter-category').classList.toggle('is-filtered', ui.category !== '*');
   $('#sort').value = ui.sort;
-  const addCategory = $('#add-category').value;
-  categoryOptions($('#add-category'), state.categories, addCategory || state.categories[0] || '');
   renderToBuy();
   renderBought();
 }
@@ -220,7 +228,11 @@ const categories = categoryManager({
   set(names, change) {
     state.categories = names;
     if (change) for (const item of [...state.toBuy, ...state.purchased]) if (item.category === change.from) item.category = change.to;
-    if (change && ui.category === change.from) ui.category = change.to || '*';
+    if (change) {
+      if (ui.category === change.from) ui.category = change.to || '*';
+      if (ui.addCategory === change.from) ui.addCategory = change.to || null;
+      remember();
+    }
   },
   countFor: name => [...state.toBuy, ...state.purchased].filter(i => i.category === name).length,
   onChange: () => save(),
@@ -239,7 +251,12 @@ window.homesQuickAdd = focusAdd;
 $('#add-form').addEventListener('submit', event => {
   event.preventDefault();
   const input = $('#add-name');
-  if (addToBuy(input.value, $('#add-category').value)) input.value = '';
+  const category = $('#add-category').value;
+  if (addToBuy(input.value, category)) {
+    ui.addCategory = category;
+    remember();
+    input.value = '';
+  }
   input.focus();
 });
 $('#tobuy-list').addEventListener('click', event => {
@@ -255,12 +272,12 @@ $('#bought-list').addEventListener('click', event => {
 for (const button of document.querySelectorAll('[data-view]')) {
   button.addEventListener('click', () => { ui.view = button.dataset.view; remember(); render(); });
 }
-$('#filter-category').addEventListener('change', event => { ui.category = event.target.value; render(); });
+$('#filter-category').addEventListener('change', event => { ui.category = event.target.value; remember(); render(); });
+$('#add-category').addEventListener('change', event => { ui.addCategory = event.target.value; remember(); });
 $('#sort').addEventListener('change', event => { ui.sort = event.target.value; remember(); render(); });
 $('#open-add').addEventListener('click', focusAdd);
 $('#menu-add').addEventListener('click', focusAdd);
 $('#open-categories').addEventListener('click', () => categories.open());
-$('#menu-categories').addEventListener('click', () => categories.open());
 $('#menu-list').addEventListener('click', () => scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
 $('#sign-out').addEventListener('click', async () => {
   if (!confirm('ログアウトしますか？')) return;
@@ -275,9 +292,11 @@ watchAuth({
     try {
       const data = await doc.load();
       state = { toBuy: data.toBuy, purchased: data.purchased, categories: data.categories };
+      loaded = true;
       $('#loading').hidden = true;
       $('#app-main').hidden = false;
       $('#user-bar').hidden = false;
+      $('#open-categories').hidden = false;
       render();
     } catch (error) {
       $('#loading').textContent = `食料品を読み込めませんでした（${error.message}）。再読み込みしてください。`;

@@ -47,6 +47,12 @@ html:root[data-theme] {
   --homes-content-gutter: var(--works-gutter, 24px);
   --homes-heading-gap: 10px;
   --homes-mobile-menu-radius: 999px;
+  --homes-mobile-menu-max: 400px;
+  --homes-mobile-menu-inset: 16px;
+  --homes-mobile-menu-pad: 6px;
+  --homes-mobile-menu-gap: 2px;
+  --homes-mobile-menu-target: 48px;
+  --homes-mobile-menu-icon: 24px;
   --homes-mobile-content-bottom: 76px;
 }
 @media (max-width: 730px) {

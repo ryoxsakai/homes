@@ -26,3 +26,30 @@ export function writeBooksPreferences(storage, preferences) {
   try { storage?.setItem(KEY, JSON.stringify(normal(preferences))); }
   catch { /* Storage is optional; the current view can still be used. */ }
 }
+
+// Keep new-book fields separate from list filters and distinguish an explicitly
+// cleared selection from a browser that has never saved a preference.
+const ENTRY_KEY = 'homes-books-new-entry';
+const fieldNames = ['location', 'category'];
+function entryPreferences(value) {
+  return Object.fromEntries(fieldNames.flatMap(field => {
+    const selection = value?.[field];
+    return typeof selection === 'string' && selection.length <= 50 ? [[field, selection]] : [];
+  }));
+}
+
+export function readBookEntryPreferences(storage) {
+  try { return entryPreferences(JSON.parse(storage?.getItem(ENTRY_KEY) || '{}')); }
+  catch { return {}; }
+}
+export function writeBookEntryPreferences(storage, preferences) {
+  try { storage?.setItem(ENTRY_KEY, JSON.stringify(entryPreferences(preferences))); }
+  catch { /* Continue using the current in-memory preferences. */ }
+}
+export function resolveBookEntryPreferences(preferences, shelf) {
+  return {
+    location: shelf.locations.includes(preferences.location) ? preferences.location : '',
+    category: preferences.category === undefined && shelf.categories.includes('絵本') ? '絵本'
+      : shelf.categories.includes(preferences.category) ? preferences.category : '',
+  };
+}

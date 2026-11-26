@@ -6,15 +6,25 @@ import { $, esc, collator, today, addDays, daysBetween, shortDay, dueLabel, toas
 
 const PREFS_KEY = 'homes-cleaning-view';
 let state = { items: [], categories: [] };
-const ui = { show: 'all', category: '*', sort: 'due' };
-try { Object.assign(ui, pick(JSON.parse(localStorage.getItem(PREFS_KEY) || '{}'))); } catch {}
-function pick(saved) {
-  const out = {};
-  if (['all', 'due'].includes(saved.show)) out.show = saved.show;
-  if (['due', 'due-desc', 'place'].includes(saved.sort)) out.sort = saved.sort;
-  return out;
+let loaded = false;
+const ui = { show: 'all', category: '*', sort: 'due', addCategory: null };
+try {
+  const saved = JSON.parse(localStorage.getItem(PREFS_KEY) || '{}');
+  if (['all', 'due'].includes(saved?.show)) ui.show = saved.show;
+  if (['due', 'due-desc', 'place'].includes(saved?.sort)) ui.sort = saved.sort;
+  if (typeof saved?.category === 'string' && saved.category.length <= 50) ui.category = saved.category;
+  if (typeof saved?.addCategory === 'string' && saved.addCategory.length <= 50) ui.addCategory = saved.addCategory;
+} catch {}
+function remember() {
+  try { localStorage.setItem(PREFS_KEY, JSON.stringify(ui)); } catch {}
 }
-const remember = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ show: ui.show, sort: ui.sort })); } catch {} };
+const validCategory = category => category === '' || state.categories.includes(category);
+function validateCategories() {
+  const previous = [ui.category, ui.addCategory];
+  if (ui.category !== '*' && !validCategory(ui.category)) ui.category = '*';
+  if (!validCategory(ui.addCategory)) ui.addCategory = null;
+  if (ui.category !== previous[0] || ui.addCategory !== previous[1]) remember();
+}
 
 const doc = createDocument('/api/cleaning', {
   render: () => render(),
@@ -44,6 +54,8 @@ const visible = () => state.items
 const CHECK = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>';
 
 function render() {
+  if (!loaded) return;
+  validateCategories();
   const over = state.items.filter(i => daysLeft(i) < 0).length;
   const due = state.items.filter(i => daysLeft(i) <= 0).length;
   $('#summary').innerHTML = [`${state.items.length}か所`, over ? `<strong>期限切れ ${over}か所</strong>` : '',
@@ -51,7 +63,7 @@ function render() {
   $('#count-all').textContent = state.items.length;
   $('#count-due').textContent = due;
   for (const b of document.querySelectorAll('[data-show]')) b.setAttribute('aria-pressed', String(b.dataset.show === ui.show));
-  ui.category = categoryOptions($('#filter-category'), state.categories, ui.category, { any: 'カテゴリ' });
+  ui.category = categoryOptions($('#filter-category'), state.categories, ui.category, { any: 'すべてのカテゴリ' });
   $('#filter-category').classList.toggle('is-filtered', ui.category !== '*');
   $('#sort').value = ui.sort;
 
@@ -112,7 +124,7 @@ function openEditor(item) {
   $('#save-item').textContent = item ? '保存' : '追加';
   $('#delete-item').hidden = !item;
   form.place.value = item?.place || '';
-  const preset = ui.category !== '*' ? ui.category : state.categories[0] || '';
+  const preset = ui.addCategory ?? (state.categories[0] ?? '');
   categoryOptions(form.category, state.categories, item ? item.category : preset);
   form.frequency.value = item?.frequency || 7;
   form.lastCleaned.value = item?.lastCleaned || today();
@@ -132,6 +144,12 @@ for (const button of form.querySelectorAll('[data-frequency]')) {
   button.addEventListener('click', () => { form.frequency.value = button.dataset.frequency; });
 }
 
+form.category.addEventListener('change', () => {
+  if (!dialog.open || editing) return;
+  ui.addCategory = form.category.value;
+  remember();
+});
+
 form.addEventListener('submit', event => {
   event.preventDefault();
   const place = form.place.value.trim();
@@ -143,6 +161,8 @@ form.addEventListener('submit', event => {
   else {
     if (state.items.length >= 500) { toast('掃除場所は500か所までです'); return; }
     state.items.push({ id: crypto.randomUUID(), ...fields, lastCleanedBy: null, history: [] });
+    ui.addCategory = fields.category;
+    remember();
   }
   initial = values();
   dialog.close();
@@ -166,7 +186,11 @@ const categories = categoryManager({
   set(names, change) {
     state.categories = names;
     if (change) for (const item of state.items) if (item.category === change.from) item.category = change.to;
-    if (change && ui.category === change.from) ui.category = change.to || '*';
+    if (change) {
+      if (ui.category === change.from) ui.category = change.to || '*';
+      if (ui.addCategory === change.from) ui.addCategory = change.to || null;
+      remember();
+    }
   },
   countFor: name => state.items.filter(i => i.category === name).length,
   onChange: () => save(),
@@ -220,11 +244,10 @@ $('#complete-all').addEventListener('click', () => {
 for (const button of document.querySelectorAll('[data-show]')) {
   button.addEventListener('click', () => { ui.show = button.dataset.show; remember(); render(); });
 }
-$('#filter-category').addEventListener('change', event => { ui.category = event.target.value; render(); });
+$('#filter-category').addEventListener('change', event => { ui.category = event.target.value; remember(); render(); });
 $('#sort').addEventListener('change', event => { ui.sort = event.target.value; remember(); render(); });
 for (const id of ['#open-add', '#menu-add', '#empty-add']) $(id).addEventListener('click', () => openEditor(null));
 $('#open-categories').addEventListener('click', () => categories.open());
-$('#menu-categories').addEventListener('click', () => categories.open());
 $('#menu-list').addEventListener('click', () => scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
 $('#import-legacy').addEventListener('click', importLegacy);
 $('#sign-out').addEventListener('click', async () => {
@@ -240,9 +263,11 @@ watchAuth({
     try {
       const data = await doc.load();
       state = { items: data.items, categories: data.categories };
+      loaded = true;
       $('#loading').hidden = true;
       $('#app-main').hidden = false;
       $('#user-bar').hidden = false;
+      $('#open-categories').hidden = false;
       render();
     } catch (error) {
       $('#loading').textContent = `掃除リストを読み込めませんでした（${error.message}）。再読み込みしてください。`;
