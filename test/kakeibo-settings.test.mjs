@@ -13,6 +13,7 @@ const kakeibo = (over = {}) => ({ ...emptyKakeibo(), fixed: [fixed()], entries: 
 test('家計 documents are validated', () => {
   validateKakeibo(kakeibo());
   validateKakeibo(kakeibo({ fixed: [fixed({ amount: 0, cycle: 'yearly' })], entries: [entry({ kind: 'living', memo: '服' })] }));
+  validateKakeibo(kakeibo({ fixed: [fixed({ name: '水道代', amount: 7800, cycle: 'bimonthly' })] }));
   for (const bad of [
     { entries: [entry({ kind: 'travel' })] }, { entries: [entry({ amount: 0 })] }, { entries: [entry({ amount: 12.5 })] },
     { entries: [entry({ amount: 100_000_001 })] }, { entries: [entry({ date: '2026-11-31' })] }, { entries: [entry({ place: '' })] },
