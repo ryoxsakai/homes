@@ -1,0 +1,161 @@
+// Run with a local Playwright install: PLAYWRIGHT_MODULE=/path/to/playwright BROWSER_EXECUTABLE=/path/to/chromium node qa/grocery-browser.mjs
+import assert from 'node:assert/strict';
+import http from 'node:http';
+import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { resolve, extname, sep } from 'node:path';
+import { nextGrocery } from '../worker/household.mjs';
+const { chromium } = createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const root = resolve(new URL('../public', import.meta.url).pathname);
+const groceryApi = '/api/grocery';
+const milk = { id: 'milk', name: '牛乳', category: '乳製品', purchasedDate: '2026-11-20', expiryDate: '2026-11-30', addedBy: '家族A', purchasedBy: '家族B' };
+const item = (id, name) => ({ id, name, category: '野菜', addedOn: '2026-11-20', addedBy: '家族A' });
+let data = { toBuy: [item('tomato', 'トマト'), item('cucumber', 'きゅうり')], purchased: [milk], categories: ['野菜', '乳製品'], revision: 2 };
+let requests = [];
+const server = http.createServer(async (req, res) => {
+  const url = new URL(req.url, 'http://localhost'), path = url.pathname;
+  const reply = (status, value, type = 'application/json') => {
+    res.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store' });
+    res.end(type === 'application/json' ? JSON.stringify(value) : value);
+  };
+  try {
+    if (path === '/api/me') return reply(200, { name: '合成データ', hasPicture: false, admin: false });
+    if (path === groceryApi) {
+      if (req.method === 'GET') return reply(200, data);
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      const input = JSON.parse(Buffer.concat(chunks));
+      requests.push(input);
+      data = { ...nextGrocery(data, input, '家族C'), revision: data.revision + 1 };
+      return reply(200, data);
+    }
+    if (path.startsWith('/api/')) return reply(200, {});
+    const target = resolve(root, '.' + path + (path.endsWith('/') ? 'index.html' : ''));
+    if (!target.startsWith(root + sep)) return reply(404, {});
+    const types = { '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript', '.html': 'text/html', '.png': 'image/png', '.svg': 'image/svg+xml' };
+    return reply(200, await readFile(target), types[extname(target)] ?? 'application/octet-stream');
+  } catch (error) { return reply(error.status ?? 404, { error: error.message }); }
+});
+await new Promise(resolveListen => server.listen(0, '127.0.0.1', resolveListen));
+const address = `http://127.0.0.1:${server.address().port}`;
+const browser = await chromium.launch({ executablePath: process.env.BROWSER_EXECUTABLE || undefined, args: ['--no-sandbox'] });
+try {
+  const mobile = await browser.newContext({ viewport: { width: 320, height: 780 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+  const page = await mobile.newPage();
+  const errors = [];
+  page.on('pageerror', error => { errors.push(error.message); });
+  await page.route('**/*', route => new URL(route.request().url()).origin === address ? route.continue() : route.abort());
+  await page.goto(address + '/grocery/');
+  const f = page.frameLocator('iframe.works-service-frame[src*="/grocery/"]');
+  const visible = selector => f.locator(selector);
+  const click = selector => visible(selector).click();
+  const tap = selector => visible(selector).tap();
+  const itemRow = id => visible(`[data-item-id="${id}"]`);
+  const stock = id => itemRow(id).locator('[data-stock-id]');
+  const buy = id => itemRow(id).locator('[data-buy-id]');
+  const saved = async () => {
+    await visible('#save-status').filter({ hasText: /^$/ }).waitFor({ state: 'attached' });
+  };
+  await itemRow('tomato').waitFor();
+  assert.equal(requests.length, 0, 'legacy read does not write');
+  assert.equal(await stock('tomato').getAttribute('aria-pressed'), 'false');
+  assert.equal(await buy('tomato').getAttribute('aria-pressed'), 'true');
+  assert.equal(await stock('milk').getAttribute('aria-pressed'), 'true');
+  assert.match(await itemRow('milk').innerText(), /賞味期限/);
+  await tap('[data-stock-id="tomato"]'); await saved();
+  assert.equal(data.toBuy.find(i => i.id === 'tomato').inStock, true);
+  assert.equal(await buy('tomato').getAttribute('aria-pressed'), 'true', 'tap leaves buy check');
+  const session = await mobile.newCDPSession(page);
+  const gesture = async (id, steps, cancel = false) => {
+    const box = await stock(id).boundingBox();
+    const x = box.x + 45, y = box.y + box.height / 2;
+    await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{x,y}] });
+    for (const [dx,dy] of steps) await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{x:x+dx,y:y+dy}] });
+    await session.send('Input.dispatchTouchEvent', { type: cancel ? 'touchCancel' : 'touchEnd', touchPoints: [] });
+  };
+  let writes = requests.length;
+  await gesture('tomato', [[20,1],[52,1],[8,1]]);
+  await buy('tomato').and(visible('[aria-pressed="false"]')).waitFor();
+  await saved();
+  assert.equal(requests.length, writes + 1, 'one write per gesture');
+  assert.equal(data.toBuy.find(i => i.id === 'tomato').inStock, true);
+  await gesture('tomato', [[20,1],[52,2]]); await saved();
+  assert.equal(await buy('tomato').getAttribute('aria-pressed'), 'true');
+  writes = requests.length;
+  await gesture('tomato', [[30,1]]);
+  await gesture('tomato', [[-30,1],[-45,1]]);
+  await gesture('tomato', [[1,-30],[2,-60]]);
+  await gesture('tomato', [[52,1],[8,1]], true);
+  assert.equal(requests.length, writes, 'aborted, incomplete, left, and vertical gestures save nothing');
+  await buy('tomato').press('Space'); await saved();
+  assert.equal(await buy('tomato').getAttribute('aria-pressed'), 'false');
+  await click('[data-edit-id="milk"]');
+  assert.equal(await visible('input[name="expiryDate"]').inputValue(), '2026-11-30');
+  await visible('input[name="expiryEnabled"]').uncheck();
+  assert.equal(await visible('#expiry-fields').isVisible(), false);
+  await f.getByRole('button', { name: '保存', exact: true }).click(); await saved();
+  assert.equal(data.purchased[0].expiryDate, '2026-11-30');
+  assert.equal(data.purchased[0].expiryEnabled, false);
+  await click('[data-edit-id="milk"]');
+  await visible('input[name="expiryEnabled"]').press('Space');
+  await visible('select[name="expiryKind"]').selectOption('use-by');
+  const expiryRect = await visible('input[name="expiryDate"]').boundingBox();
+  const modalRect = await visible('#item-dialog').boundingBox();
+  assert.ok(expiryRect.x >= modalRect.x && expiryRect.x + expiryRect.width <= modalRect.x + modalRect.width, 'date input fits dialog');
+  await f.getByRole('button', { name: '保存', exact: true }).click(); await saved();
+  assert.match(await itemRow('milk').innerText(), /消費期限/);
+  await click('#manage-tabs');
+  await visible('.homes-manage-add input').fill('調味料');
+  await click('.homes-manage-add button');
+  await visible('[aria-label="調味料を上へ"]').press('Enter');
+  await visible('[aria-label="調味料を上へ"]:focus').waitFor();
+  await visible('[aria-label="調味料を下へ"]').press('Enter');
+  await visible('[aria-label="調味料を上へ"]:focus').waitFor();
+  await visible('[aria-label="調味料を上へ"]').press('Enter');
+  await f.getByRole('dialog', { name: 'カテゴリ設定' }).getByRole('button', { name: '閉じる', exact: true }).click();
+  await saved();
+  assert.deepEqual(data.categories, ['野菜','調味料','乳製品']);
+  await f.getByRole('button', {name:'野菜', exact:true}).click();
+  await click('#reorder-items');
+  await f.getByRole('button', {name:'「きゅうり」を上へ', exact:true}).press('Enter'); await saved();
+  assert.deepEqual(data.itemOrder, ['cucumber','tomato','milk']);
+  await click('#reorder-items');
+  await click('#menu-add');
+  assert.equal(await visible('select[name="category"]').inputValue(), '野菜');
+  await visible('input[name="name"]').fill('白菜');
+  await f.getByRole('button', { name: '保存', exact: true }).click(); await saved();
+  assert.equal(data.toBuy.at(-1).buyChecked, false);
+  await page.reload(); await itemRow('tomato').waitFor();
+  assert.equal(await f.getByRole('button', {name:'野菜', exact:true}).getAttribute('aria-pressed'), 'true');
+  assert.deepEqual(await visible('.grocery-item').evaluateAll(el => el.map(e => e.dataset.itemId)),
+    ['cucumber','tomato',data.toBuy.at(-1).id]);
+  await click('[data-view="buy"]');
+  await click('[data-purchased="cucumber"]'); await saved();
+  assert.deepEqual(data.purchased.find(i => i.id === 'cucumber').purchasedBy, '家族C');
+  assert.equal(await itemRow('cucumber').count(), 0);
+  await click('[data-view="inventory"]');
+  assert.equal(await stock('cucumber').getAttribute('aria-pressed'), 'true');
+  assert.ok(await visible('body').evaluate(e => e.scrollWidth <= innerWidth), 'mobile document fits viewport');
+  await page.screenshot({ path: '/tmp/homes-grocery-mobile.png' });
+  // Simulate another phone saving after this phone's last load. Nothing queued after
+  // a 409 may overwrite that revision, and the screen must say reload, not saved.
+  data.revision++;
+  writes = requests.length;
+  await tap('[data-stock-id="tomato"]');
+  await visible('#reload').waitFor();
+  await tap('[data-buy-id="tomato"]');
+  await visible('#reload').waitFor();
+  assert.equal(requests.length, writes + 1);
+  assert.match(await visible('#save-status').innerText(), /別の画面で変更/);
+  assert.deepEqual(errors, []);
+  await page.close();
+  const desktop = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  await desktop.goto(address + '/grocery/');
+  await desktop.locator('[data-item-id="tomato"]').waitFor();
+  assert.ok(await desktop.locator('body').evaluate(e => e.scrollWidth <= innerWidth), 'desktop document fits viewport');
+  await desktop.screenshot({ path: '/tmp/homes-grocery-desktop.png' });
+  console.log('PASS Homes grocery (320px actual mobile shell & touch input, desktop 1280px, retrieval, persisted order, checked purchase, expiry, and conflict).');
+} finally {
+  await browser.close();
+  await new Promise(resolveEnd => server.close(resolveEnd));
+}

@@ -40,6 +40,14 @@ export function checkRevision(current, input, label) {
   if (input.revision !== current.revision) throw failure(409, '別の画面で変更されています。再読み込みしてください');
 }
 
+const groceryExtra = ['inStock', 'buyChecked', 'expiryEnabled', 'expiryKind', 'expiryDate'];
+function groceryFieldsOK(item) {
+  return ['inStock', 'buyChecked', 'expiryEnabled'].every(key => !(key in item) || typeof item[key] === 'boolean') &&
+    (!('expiryKind' in item) || ['best-before', 'use-by'].includes(item.expiryKind)) &&
+    (!('expiryDate' in item) || item.expiryDate === null || isDay(item.expiryDate)) &&
+    (item.expiryEnabled !== true || isDay(item.expiryDate));
+}
+
 export function validateGrocery(state) {
   const category = c => c === '' || state.categories.includes(c);
   if (!state || !Array.isArray(state.toBuy) || !Array.isArray(state.purchased) ||
@@ -48,14 +56,20 @@ export function validateGrocery(state) {
     reject('食料品の入力形式が不正です');
   for (const i of state.toBuy) {
     if (!i || !filled(i.id, 120) || !filled(i.name, 200) || !category(i.category) ||
-        !isDay(i.addedOn) || !actorOK(i.addedBy))
+        !isDay(i.addedOn) || !actorOK(i.addedBy) || !groceryFieldsOK(i))
       reject('買うものの入力内容を確認してください');
   }
   for (const i of state.purchased) {
     if (!i || !filled(i.id, 120) || !filled(i.name, 200) || !category(i.category) ||
         !isDay(i.purchasedDate) || !(i.expiryDate === null || isDay(i.expiryDate)) ||
-        !actorOK(i.addedBy) || !actorOK(i.purchasedBy))
+        !actorOK(i.addedBy) || !actorOK(i.purchasedBy) || !groceryFieldsOK(i))
       reject('買ったものの入力内容を確認してください');
+  }
+  if ('itemOrder' in state) {
+    const ids = new Set([...state.toBuy, ...state.purchased].map(item => item.id));
+    if (!Array.isArray(state.itemOrder) || state.itemOrder.length !== ids.size ||
+        new Set(state.itemOrder).size !== ids.size || state.itemOrder.some(id => !ids.has(id)))
+      reject('品物の並び順が不正です');
   }
   return state;
 }
@@ -68,18 +82,43 @@ export function nextGrocery(current, input, actor) {
   const deleted = new Map((current.deleted ?? []).map(d => [d.id, d]));
   const before = new Map([...deleted.values(), ...current.toBuy, ...current.purchased].map(i => [i.id, i]));
   const wasBought = new Set([...current.purchased.map(i => i.id), ...[...deleted.values()].filter(d => d.bought).map(d => d.id)]);
-  for (const item of state.toBuy) {
+  const currentBought = new Map(current.purchased.map(item => [item.id, item]));
+  const oldShape = !Object.hasOwn(input, 'itemOrder');
+  const incomingItems = [...state.toBuy, ...state.purchased];
+  const buying = new Set(state.purchased);
+  if (!oldShape) state.itemOrder = structuredClone(input.itemOrder);
+  for (const item of incomingItems) {
     if (!item || typeof item !== 'object') continue;
-    item.addedBy = before.has(item.id) ? before.get(item.id).addedBy ?? null : actor;
+    const previous = before.get(item.id);
+    item.addedBy = previous ? previous.addedBy ?? null : actor;
+    // A cached pre-inventory tab can still write legacy fields, but must not
+    // silently discard inventory fields or undo the custom order.
+    if (oldShape && previous) {
+      for (const key of groceryExtra) if (!(key in item) && key in previous) item[key] = previous[key];
+      if (buying.has(item) && !wasBought.has(item.id)) {
+        if ('inStock' in item) item.inStock = true;
+        if ('buyChecked' in item) item.buyChecked = false;
+      }
+      if (item.expiryEnabled === true && !item.expiryDate) item.expiryEnabled = false;
+    }
   }
   for (const item of state.purchased) {
     if (!item || typeof item !== 'object') continue;
     const old = before.get(item.id);
-    item.addedBy = old ? old.addedBy ?? null : actor;
     item.purchasedBy = wasBought.has(item.id) ? old.purchasedBy ?? null : actor;
+    // Explicit in-app purchase of an already known item; ordinary date edits
+    // do not change attribution. Never trust a client-supplied actor alias.
+    if (!oldShape && input.markPurchased === item.id && currentBought.has(item.id)) item.purchasedBy = actor;
+  }
+  if (!oldShape && Object.hasOwn(input, 'markPurchased') &&
+      (!filled(input.markPurchased, 120) || !state.purchased.some(item => item?.id === input.markPurchased && item.inStock === true && item.buyChecked === false)))
+    reject('購入した品物が見つかりません');
+  if (oldShape && Array.isArray(current.itemOrder)) {
+    const nextIds = new Set(incomingItems.map(item => item?.id));
+    state.itemOrder = [...new Set([...current.itemOrder.filter(id => nextIds.has(id)), ...nextIds])];
   }
   validateGrocery(state);
-  const ids = new Set([...state.toBuy, ...state.purchased].map(i => i.id));
+  const ids = new Set(incomingItems.map(i => i.id));
   const bought = new Set(current.purchased.map(i => i.id));
   state.deleted = rememberDeleted({ ...current, liveItems: [...current.toBuy, ...current.purchased] }, ids,
     i => ({ id: i.id, addedBy: i.addedBy ?? null, ...(bought.has(i.id) && { bought: true, purchasedBy: i.purchasedBy ?? null }) }));

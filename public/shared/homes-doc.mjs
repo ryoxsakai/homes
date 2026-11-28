@@ -60,6 +60,7 @@ export function createDocument(path, { onSaved, render }) {
     },
     // Saves a snapshot of the whole document after each change, one request at a time.
     save(snapshot, message, undo) {
+      if (broken) return; // Keep the conflict/error visible; do not restart the stopped queue.
       pending++;
       $('#save-status').textContent = '保存中…';
       queue = queue.then(async () => {
@@ -84,6 +85,7 @@ export function createDocument(path, { onSaved, render }) {
     // Takes a document the server saved by another route (e.g. an import) as current.
     adopt(saved) { revision = saved.revision; },
     get busy() { return pending > 0 || broken; },
+    get blocked() { return broken; },
   };
 }
 
@@ -103,14 +105,15 @@ export function wireDialogs(isDirty = () => false) {
 }
 
 // ─── Category manager (add, rename, reorder, delete) ─────────────────
-export function categoryManager({ dialog, get, set, countFor, onChange, label = 'カテゴリ' }) {
+export function categoryManager({ dialog, get, set, countFor, onChange, label = 'カテゴリ', twoWayOrder = false }) {
   const list = dialog.querySelector('.homes-manage-list');
   const form = dialog.querySelector('.homes-manage-add');
   const render = () => {
     const names = get();
     list.innerHTML = names.map((name, i) => `<li>
       <span class="homes-manage-name">${esc(name)}<small>${countFor(name)}件</small></span>
-      <button type="button" class="homes-icon-btn" data-move="${i}" aria-label="${esc(name)}を上へ" ${i ? '' : 'disabled'}>↑</button>
+      <button type="button" class="homes-icon-btn" data-move="${i}" data-step="-1" aria-label="${esc(name)}を上へ" ${i ? '' : 'disabled'}>↑</button>
+      ${twoWayOrder ? `<button type="button" class="homes-icon-btn" data-move="${i}" data-step="1" aria-label="${esc(name)}を下へ" ${i < names.length - 1 ? '' : 'disabled'}>↓</button>` : ''}
       <button type="button" class="homes-icon-btn" data-rename="${i}" aria-label="${esc(name)}の名前を変更">✎</button>
       <button type="button" class="homes-icon-btn" data-remove="${i}" aria-label="${esc(name)}を削除">🗑</button>
     </li>`).join('') || '<li class="homes-manage-empty">まだありません</li>';
@@ -132,10 +135,15 @@ export function categoryManager({ dialog, get, set, countFor, onChange, label = 
     const button = event.target.closest('button');
     if (!button) return;
     const names = [...get()];
-    if (button.dataset.move) {
+    let restore;
+    if ('move' in button.dataset) {
       const i = Number(button.dataset.move);
-      [names[i - 1], names[i]] = [names[i], names[i - 1]];
+      const step = Number(button.dataset.step) === 1 && twoWayOrder ? 1 : -1;
+      const j = i + step;
+      if (!Number.isInteger(i) || !names[i] || !names[j]) return;
+      [names[i], names[j]] = [names[j], names[i]];
       set(names, null);
+      if (twoWayOrder) restore = [j, step];
     } else if (button.dataset.rename) {
       const i = Number(button.dataset.rename), old = names[i];
       const name = (prompt(`${label}の新しい名前`, old) || '').trim().slice(0, 50);
@@ -151,6 +159,11 @@ export function categoryManager({ dialog, get, set, countFor, onChange, label = 
       set(names, { from: old, to: '' });
     }
     render();
+    if (restore) {
+      const [position, step] = restore;
+      const findMove = direction => list.querySelector(`[data-move="${position}"][data-step="${direction}"]:not(:disabled)`);
+      (findMove(step) || findMove(-step))?.focus({ preventScroll: true });
+    }
     onChange();
   });
   return { open() { render(); openDialog(dialog); } };
