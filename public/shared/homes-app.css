@@ -150,6 +150,8 @@
 .homes-field > span { color: var(--works-ink-2); font-size: 12px; font-weight: 600; }
 .homes-field em { margin-left: 6px; color: var(--works-danger); font-size: 11px; font-style: normal; }
 .homes-field input, .homes-field select, .homes-field textarea { width: 100%; }
+/* Keep the native date control within the cleaning dialog at narrow widths. */
+.cleaning-page #item-dialog input[name="lastCleaned"] { min-inline-size: 0; max-inline-size: 100%; }
 .homes-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .homes-field-inline { display: flex; align-items: center; gap: 8px; }
 .homes-field-inline input { flex: 1; min-width: 0; }
