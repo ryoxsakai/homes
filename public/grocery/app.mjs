@@ -1,297 +1,307 @@
-// Homes 食料品: what to buy, and what was bought with its best-before date.
-// Ported from ryoxsakai/grocery-checker; saved as one household document (/api/grocery).
 import { watchAuth, signOutUser } from '../shared/auth.js?v=14';
-import { $, esc, collator, today, addDays, daysBetween, shortDay, dueLabel, toast,
-  createDocument, openDialog, wireDialogs, categoryManager, categoryOptions } from '../shared/homes-doc.mjs?v=1';
+import { $, esc, today, daysBetween, shortDay, dueLabel, toast,
+  createDocument, openDialog, wireDialogs, categoryManager, categoryOptions } from '../shared/homes-doc.mjs?v=2';
+import { readGrocery, groceryItems, moveItem, swipeStep, shouldToggleBuy } from './model.mjs?v=1';
 
-const PREFS_KEY = 'homes-grocery-view';
-let state = { toBuy: [], purchased: [], categories: [] };
-let loaded = false;
-const ui = { view: 'tobuy', category: '*', addCategory: null, sort: 'expiry' };
-try { Object.assign(ui, pick(JSON.parse(localStorage.getItem(PREFS_KEY) || '{}'))); } catch {}
-function pick(saved) {
-  const out = {};
-  if (['tobuy', 'bought'].includes(saved.view)) out.view = saved.view;
-  if (['expiry', 'bought-desc', 'name'].includes(saved.sort)) out.sort = saved.sort;
-  for (const key of ['category', 'addCategory']) {
-    if (typeof saved[key] === 'string' && saved[key].length <= 50) out[key] = saved[key];
+const PREFS_KEY = 'homes-grocery-inventory-view';
+let state = readGrocery({ toBuy: [], purchased: [], categories: [] });
+let loaded = false, editing = null, initial = '', gesture = null, delayedRender = false, suppressClick = false;
+const ui = { view: 'inventory', category: null, reorder: false };
+try {
+  const saved = JSON.parse(localStorage.getItem(PREFS_KEY) || '{}');
+  if (saved.view === 'buy') ui.view = 'buy';
+  if (typeof saved.category === 'string' && saved.category.length <= 50) ui.category = saved.category;
+  if (!localStorage.getItem(PREFS_KEY)) {
+    const prior = JSON.parse(localStorage.getItem('homes-grocery-view') || '{}');
+    if (typeof prior.category === 'string' && prior.category !== '*' && prior.category.length <= 50) ui.category = prior.category;
   }
-  return out;
-}
-const remember = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify(ui)); } catch {} };
+} catch {}
+const remember = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ view: ui.view, category: ui.category })); } catch {} };
 
 const doc = createDocument('/api/grocery', {
-  render: () => render(),
-  // Keep who added / bought what (decided by the server) without disturbing newer edits.
+  render,
   onSaved(saved) {
-    const byId = new Map([...saved.toBuy, ...saved.purchased].map(i => [i.id, i]));
-    for (const item of [...state.toBuy, ...state.purchased]) {
+    const byId = new Map([...saved.toBuy, ...saved.purchased].map(item => [item.id, item]));
+    for (const { item } of groceryItems(state)) {
       const persisted = byId.get(item.id);
       if (!persisted) continue;
       item.addedBy = persisted.addedBy;
-      if ('purchasedBy' in persisted) item.purchasedBy = persisted.purchasedBy;
+      if (item.purchasedDate === persisted.purchasedDate && 'purchasedBy' in persisted) item.purchasedBy = persisted.purchasedBy;
     }
   },
 });
-const snapshot = () => structuredClone({ toBuy: state.toBuy, purchased: state.purchased, categories: state.categories });
-const save = (message, undo) => doc.save(snapshot(), message, undo);
+const save = (message, undo, markPurchased) => doc.save(
+  structuredClone({ ...state, ...(markPurchased ? { markPurchased } : {}) }), message, undo,
+);
+const editable = () => {
+  if (!doc.blocked) return true;
+  $('#reload')?.focus({ preventScroll: true });
+  return false;
+};
+const byId = id => groceryItems(state).find(entry => entry.item.id === id);
+const matching = rows => rows.filter(({item}) => ui.category === null || item.category === ui.category);
 
-// ─── Freshness ───────────────────────────────────────────────────────
-function freshness(item) {
-  if (!item.expiryDate) return { text: '期限なし', state: 'none', ratio: null };
-  const label = dueLabel(daysBetween(today(), item.expiryDate));
-  const span = Math.max(1, daysBetween(item.purchasedDate, item.expiryDate));
-  const ratio = Math.min(1, Math.max(0, daysBetween(item.purchasedDate, today()) / span));
-  return { ...label, ratio };
-}
-const rank = name => name ? (state.categories.indexOf(name) + 1 || Infinity) : Infinity;
-const matchesCategory = item => ui.category === '*' || item.category === ui.category;
+// Icons match the line style and size of the Homes toolbar.
+const icon = path => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
+const cart = icon('<path d="M5 8h14l-1.5 10h-11zM8 8l4-6 4 6"/><path d="M9 13h6m-3-3v6"/>');
+const purchased = icon('<path d="m5 12 5 5L19 8"/>');
+const pencil = icon('<path d="m15 5 4 4M5 19l4-.8L20 7l-4-4L5 14z"/>');
+const up = icon('<path d="M12 19V5m-5 5 5-5 5 5"/>');
+const down = icon('<path d="M12 5v14m-5-5 5 5 5-5"/>');
 
-// ─── Render ──────────────────────────────────────────────────────────
-const CHECK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>';
+const list = $('#inventory-list'), tabs = $('#category-tabs');
+const expiryName = entry => entry.expiryKind === 'use-by' ? '消費期限' : '賞味期限';
+const orderLabel = entry => entry.inStock ? 'ある' : 'ない';
 
 function render() {
   if (!loaded) return;
-  const expired = state.purchased.filter(i => i.expiryDate && daysBetween(today(), i.expiryDate) < 0).length;
-  const soon = state.purchased.filter(i => i.expiryDate && (d => d >= 0 && d <= 3)(daysBetween(today(), i.expiryDate))).length;
-  $('#summary').innerHTML = [`買うもの ${state.toBuy.length}件`,
-    expired ? `<strong>期限切れ ${expired}件</strong>` : '', soon ? `期限間近 ${soon}件` : ''].filter(Boolean).join('・');
-  $('#count-tobuy').textContent = state.toBuy.length;
-  $('#count-bought').textContent = state.purchased.length;
-  for (const b of document.querySelectorAll('[data-view]')) b.setAttribute('aria-pressed', String(b.dataset.view === ui.view));
-  $('#view-tobuy').hidden = ui.view !== 'tobuy';
-  $('#view-bought').hidden = ui.view !== 'bought';
-  document.querySelector('[data-for="bought"]').hidden = ui.view !== 'bought';
-  const savedFilter = ui.category;
-  const savedAdd = ui.addCategory;
-  ui.category = categoryOptions($('#filter-category'), state.categories, savedFilter, { any: 'すべてのカテゴリ' });
-  const shownAdd = categoryOptions($('#add-category'), state.categories, savedAdd);
-  if (savedAdd !== null && savedAdd !== shownAdd) ui.addCategory = null;
-  if (ui.category !== savedFilter || ui.addCategory !== savedAdd) remember();
-  $('#filter-category').classList.toggle('is-filtered', ui.category !== '*');
-  $('#sort').value = ui.sort;
-  renderToBuy();
-  renderBought();
-}
-
-function renderToBuy() {
-  const items = state.toBuy.filter(matchesCategory);
-  const groups = new Map();
-  for (const item of [...items].sort((a, b) => rank(a.category) - rank(b.category))) {
-    if (!groups.has(item.category)) groups.set(item.category, []);
-    groups.get(item.category).push(item);
+  if (gesture) { delayedRender = true; return; }
+  delayedRender = false;
+  const rows = groceryItems(state);
+  const buy = rows.filter(entry => entry.buyChecked);
+  if (ui.category !== null && ui.category !== '' && !state.categories.includes(ui.category)) {
+    ui.category = null; remember();
   }
-  $('#tobuy-list').innerHTML = [...groups].map(([category, list]) => `
-    <h3 class="homes-group-title">${esc(category || '未分類')}<span class="homes-count">${list.length}</span></h3>
-    <ul class="homes-panel">${list.map(item => `
-      <li class="homes-row">
-        <button type="button" class="homes-check" data-buy="${esc(item.id)}" aria-label="「${esc(item.name)}」を買った" title="買った"><span>${CHECK}</span></button>
-        <button type="button" class="homes-row-main" data-edit="${esc(item.id)}">
-          <span class="homes-row-title">${esc(item.name)}</span>
-          ${item.addedBy ? `<span class="homes-row-meta">${esc(item.addedBy)}が追加</span>` : ''}
-        </button>
-      </li>`).join('')}
-    </ul>`).join('');
-  $('#tobuy-empty').hidden = items.length > 0;
-  $('#tobuy-empty p').textContent = state.toBuy.length ? 'このカテゴリの買うものはありません' : '買うものはありません。上の欄から追加できます。';
+  const active = document.activeElement;
+  const focusKey = active?.dataset?.groceryFocus;
+  const scrolled = tabs.scrollLeft;
+  const overdue = rows.filter(e => e.inStock && e.expiryEnabled && e.item.expiryDate && e.item.expiryDate < today()).length;
+  $('#summary').textContent = `在庫あり ${rows.filter(e => e.inStock).length}件・買うもの ${buy.length}件${overdue ? `・期限切れ ${overdue}件` : ''}`;
+  $('#count-buy').textContent = buy.length;
+  for (const button of document.querySelectorAll('[data-view]')) button.setAttribute('aria-pressed', String(button.dataset.view === ui.view));
+  const reorder = $('#reorder-items');
+  reorder.hidden = ui.view !== 'inventory';
+  reorder.setAttribute('aria-pressed', String(ui.reorder));
+  reorder.textContent = ui.reorder ? '並べ替えを終了' : '並べ替え';
+  $('#inventory-hint').textContent = ui.reorder ? '矢印で同じカテゴリ内の順番を変更します。'
+    : ui.view === 'buy' ? '「購入済み」にすると在庫が「ある」になり、買うもの一覧から外れます。'
+      : 'タップで「ある／ない」。右に軽くスライドすると「買う」を切り替えます。';
+  const tabNames = [null, ...state.categories, ''];
+  tabs.innerHTML = tabNames.map((name, i) =>
+    `<button type="button" data-tab-index="${i}" data-grocery-focus="tab:${i}" aria-pressed="${name === ui.category}">${esc(name === null ? 'すべて' : name || '未分類')}</button>`).join('');
+  tabs.scrollLeft = scrolled;
+  const shown = matching(ui.view === 'buy' ? buy : rows);
+  const groups = (ui.category === null ? [...state.categories, ''] : [ui.category])
+    .map(category => [category, shown.filter(({ item }) => item.category === category)]).filter(([, items]) => items.length);
+  list.innerHTML = groups.map(([category, entries]) => `
+    ${ui.category === null ? `<h3 class="homes-group-title">${esc(category || '未分類')}<span class="homes-count">${entries.length}</span></h3>` : ''}
+    <ul class="homes-panel grocery-items">${entries.map((entry, index) => rowMarkup(entry, index, entries)).join('')}</ul>`).join('');
+  const empty = $('#inventory-empty');
+  empty.hidden = shown.length > 0;
+  empty.querySelector('p').textContent = ui.view === 'buy' ? 'このカテゴリに買うものはありません。'
+    : 'このカテゴリに品物はありません。「品物を追加」から登録できます。';
+  if (focusKey && !active.isConnected) {
+    const replacement = [...document.querySelectorAll('[data-grocery-focus]')].find(el => el.dataset.groceryFocus === focusKey);
+    if (replacement && !replacement.disabled) replacement.focus({ preventScroll: true });
+    else if (ui.reorder) reorder.focus({ preventScroll: true });
+    else document.querySelector(`[data-view="${ui.view}"]`).focus({ preventScroll: true });
+  }
 }
 
-const boughtSorters = {
-  expiry: (a, b) => (a.expiryDate ? 0 : 1) - (b.expiryDate ? 0 : 1) || (a.expiryDate || '').localeCompare(b.expiryDate || '') || collator.compare(a.name, b.name),
-  'bought-desc': (a, b) => b.purchasedDate.localeCompare(a.purchasedDate) || collator.compare(a.name, b.name),
-  name: (a, b) => collator.compare(a.name, b.name),
-};
-
-function renderBought() {
-  const items = state.purchased.filter(matchesCategory).sort(boughtSorters[ui.sort]);
-  $('#bought-list').innerHTML = items.map(item => {
-    const f = freshness(item);
-    return `<li class="homes-row${f.state === 'over' ? ' is-overdue' : ''}">
-      <button type="button" class="homes-row-main" data-edit="${esc(item.id)}">
-        <span class="homes-row-title">${esc(item.name)}</span>
-        <span class="homes-row-meta">
-          ${item.category ? `<span class="homes-chip">${esc(item.category)}</span>` : ''}
-          <span>${shortDay(item.purchasedDate)}に購入${item.purchasedBy ? `（${esc(item.purchasedBy)}）` : ''}</span>
+function rowMarkup(entry, index, group) {
+  const { item } = entry;
+  const id = esc(item.id);
+  const name = esc(item.name);
+  const due = entry.expiryEnabled && item.expiryDate ? dueLabel(daysBetween(today(), item.expiryDate)) : null;
+  const meta = item.purchasedDate ? `${shortDay(item.purchasedDate)}に購入${item.purchasedBy ? `（${esc(item.purchasedBy)}）` : ''}` : '';
+  const move = (direction, off, glyph) => `<button type="button" class="homes-icon-btn grocery-tool" data-move="${direction}" data-id="${id}" data-grocery-focus="move:${direction}:${id}" aria-label="「${name}」を${direction < 0 ? '上' : '下'}へ" ${off ? 'disabled' : ''}>${glyph}</button>`;
+  return `<li class="grocery-item" data-item-id="${id}">
+    <div class="grocery-swipe-hint" aria-hidden="true">${cart}<span>${entry.buyChecked ? '買うを外す' : '買うに追加'}</span></div>
+    <div class="grocery-row" data-stock="${entry.inStock}">
+      <button type="button" class="grocery-stock" data-stock-id="${id}" data-grocery-focus="stock:${id}" aria-label="「${name}」の在庫" aria-pressed="${entry.inStock}" ${ui.reorder ? 'disabled' : ''}>
+        <span class="grocery-state">${orderLabel(entry)}</span>
+        <span class="grocery-copy">
+          <span class="homes-row-title">${name}</span>
+          ${due ? `<span class="grocery-date"> ${expiryName(entry)} ${shortDay(item.expiryDate)} <span class="homes-due" data-state="${due.state}">${due.text}</span></span>` : ''}
+          ${meta ? `<span class="homes-row-meta">${meta}</span>` : ''}
         </span>
       </button>
-      <span class="homes-row-side">
-        <span class="homes-due" data-state="${f.state}">${f.text}</span>
-        ${f.ratio === null ? '' : `<span class="homes-meter" data-state="${f.state}" aria-hidden="true"><span style="width:${Math.round(f.ratio * 100)}%"></span></span>`}
-      </span>
-    </li>`;
-  }).join('');
-  $('#bought-list').hidden = items.length === 0;
-  $('#bought-empty').hidden = items.length > 0;
-  $('#bought-empty p').textContent = state.purchased.length ? 'このカテゴリの買ったものはありません' : '買ったものはまだありません。買うものの ◯ を押すとここに移ります。';
+      <div class="grocery-tools">
+        ${ui.reorder ? move(-1, index === 0, up) + move(1, index === group.length - 1, down) : `
+        ${ui.view === 'buy' ? `<button type="button" class="homes-icon-btn grocery-tool grocery-complete" data-purchased="${id}" data-grocery-focus="purchase:${id}" aria-label="「${name}」を購入済みにする" title="購入済み">${purchased}</button>` : ''}
+        <button type="button" class="homes-icon-btn grocery-tool grocery-buy" data-buy-id="${id}" data-grocery-focus="buy:${id}" aria-pressed="${entry.buyChecked}" aria-label="「${name}」を買う" title="買う">${cart}</button>
+        <button type="button" class="homes-icon-btn grocery-tool" data-edit-id="${id}" data-grocery-focus="edit:${id}" aria-label="「${name}」を編集" title="編集">${pencil}</button>`}
+      </div>
+    </div>
+  </li>`;
 }
 
-// ─── Actions ─────────────────────────────────────────────────────────
-function addToBuy(name, category) {
-  name = name.trim().slice(0, 200);
-  if (!name) return false;
-  if (state.toBuy.length >= 1000) { toast('買うものは1000件までです'); return false; }
-  state.toBuy.push({ id: crypto.randomUUID(), name, category, addedOn: today(), addedBy: null });
-  save(`「${name}」を追加しました`);
-  return true;
+function toggleBuy(id) {
+  if (!editable()) return;
+  const entry = byId(id);
+  if (!entry) return;
+  entry.item.buyChecked = !entry.buyChecked;
+  save(entry.item.buyChecked ? '買うものに追加しました' : '買うものから外しました');
 }
-
 function markBought(id) {
-  const index = state.toBuy.findIndex(i => i.id === id);
-  if (index < 0) return;
-  const [item] = state.toBuy.splice(index, 1);
-  const bought = { id: item.id, name: item.name, category: item.category, purchasedDate: today(), expiryDate: null, addedBy: item.addedBy ?? null, purchasedBy: null };
-  state.purchased.unshift(bought);
-  save(`「${item.name}」を買ったものに移しました`, () => {
-    // Undo puts it back exactly where it was.
-    state.purchased = state.purchased.filter(i => i.id !== item.id);
-    state.toBuy.splice(Math.min(index, state.toBuy.length), 0, item);
-    save('元に戻しました');
-  });
+  if (!editable()) return;
+  const entry = byId(id);
+  if (!entry || !entry.buyChecked) return;
+  if (entry.bucket === 'toBuy' && state.purchased.length >= 3000) { toast('購入記録は3000件までです'); return; }
+  const from = state[entry.bucket], oldIndex = from.indexOf(entry.item);
+  const item = { ...entry.item, inStock: true, buyChecked: false, purchasedDate: today(), expiryDate: entry.item.expiryDate ?? null, purchasedBy: null };
+  from.splice(oldIndex, 1);
+  state.purchased.splice(entry.bucket === 'purchased' ? oldIndex : 0, 0, item);
+  save('購入済みにしました', undefined, id);
 }
 
-// ─── Edit dialog ─────────────────────────────────────────────────────
-const dialog = $('#item-dialog');
-const form = $('#item-form');
-let editing = null;
-let initial = '';
-const values = () => JSON.stringify([form.name.value, form.category.value, form.purchasedDate.value, form.expiryDate.value]);
-
-function openEditor(id) {
-  const bought = state.purchased.find(i => i.id === id);
-  editing = bought || state.toBuy.find(i => i.id === id);
-  if (!editing) return;
-  $('#item-title').textContent = bought ? '買ったもの' : '買うもの';
-  form.name.value = editing.name;
-  categoryOptions(form.category, state.categories, editing.category);
-  $('#bought-fields').hidden = !bought;
-  $('#buy-again').hidden = !bought;
-  form.purchasedDate.value = bought?.purchasedDate || today();
-  form.expiryDate.value = bought?.expiryDate || '';
-  $('#item-meta').textContent = [editing.addedBy && `${editing.addedBy}が追加`, bought?.purchasedBy && `${bought.purchasedBy}が購入`].filter(Boolean).join('・');
+const dialog = $('#item-dialog'), form = $('#item-form'), fields = form.elements;
+const values = () => JSON.stringify([fields.name.value, fields.category.value, fields.inStock.checked,
+  fields.buyChecked.checked, fields.expiryEnabled.checked, fields.expiryKind.value, fields.expiryDate.value, fields.purchasedDate.value]);
+function syncExpiry() {
+  $('#expiry-fields').hidden = !fields.expiryEnabled.checked;
+  fields.expiryDate.required = fields.expiryEnabled.checked;
+}
+function openEditor(entry, quickBuy = false) {
+  if (!loaded || !editable()) return;
+  editing = entry;
+  const item = entry?.item;
+  $('#item-title').textContent = item ? '品物を編集' : '品物を追加';
+  fields.name.value = item?.name || '';
+  categoryOptions(fields.category, state.categories, item?.category ?? ui.category ?? '');
+  fields.inStock.checked = entry?.inStock ?? false;
+  fields.buyChecked.checked = entry?.buyChecked ?? (quickBuy || ui.view === 'buy');
+  fields.expiryEnabled.checked = entry?.expiryEnabled ?? false;
+  fields.expiryKind.value = entry?.expiryKind ?? 'best-before';
+  fields.expiryDate.value = item?.expiryDate ?? '';
+  fields.purchasedDate.value = item?.purchasedDate ?? '';
+  $('#purchase-details').hidden = entry?.bucket !== 'purchased';
+  $('#purchase-details').open = false;
+  $('#delete-item').hidden = !item;
+  $('#item-meta').textContent = [item?.addedBy && `${item.addedBy}が追加`, item?.purchasedBy && `${item.purchasedBy}が購入`].filter(Boolean).join('・');
+  syncExpiry();
   initial = values();
   openDialog(dialog);
+  fields.name.focus({ preventScroll: true });
 }
-
-for (const button of document.querySelectorAll('[data-days]')) {
-  button.addEventListener('click', () => {
-    form.expiryDate.value = addDays(form.purchasedDate.value || today(), Number(button.dataset.days));
-  });
-}
-$('#clear-expiry').addEventListener('click', () => { form.expiryDate.value = ''; });
-
+fields.expiryEnabled.addEventListener('change', syncExpiry);
 form.addEventListener('submit', event => {
   event.preventDefault();
-  const name = form.name.value.trim();
-  if (!name) { toast('品名を入力してください'); form.name.focus(); return; }
-  const bought = state.purchased.includes(editing);
-  if (bought) {
-    if (!form.purchasedDate.value) { toast('購入日を入力してください'); form.purchasedDate.focus(); return; }
-    if (form.expiryDate.value && form.expiryDate.value < form.purchasedDate.value) { toast('賞味期限は購入日以降にしてください'); form.expiryDate.focus(); return; }
-    editing.purchasedDate = form.purchasedDate.value;
-    editing.expiryDate = form.expiryDate.value || null;
+  if (!editable()) return;
+  const name = fields.name.value.trim().slice(0, 200);
+  if (!name) { toast('品名を入力してください'); fields.name.focus(); return; }
+  if (fields.expiryEnabled.checked && !fields.expiryDate.value) { toast('期限日を入力してください'); fields.expiryDate.focus(); return; }
+  if (editing?.bucket === 'purchased' && !fields.purchasedDate.value) {
+    $('#purchase-details').open = true; toast('購入日を入力してください'); fields.purchasedDate.focus(); return;
   }
-  editing.name = name.slice(0, 200);
-  editing.category = form.category.value;
-  initial = values();
-  dialog.close();
-  save('保存しました');
+  if (!editing && state.toBuy.length >= 1000) { toast('新しく登録できる品物は1000件までです'); return; }
+  const item = editing?.item ?? { id: crypto.randomUUID(), addedOn: today(), addedBy: null };
+  Object.assign(item, { name, category: fields.category.value, inStock: fields.inStock.checked,
+    buyChecked: fields.buyChecked.checked, expiryEnabled: fields.expiryEnabled.checked,
+    expiryKind: fields.expiryKind.value, expiryDate: fields.expiryDate.value || null });
+  if (editing?.bucket === 'purchased') item.purchasedDate = fields.purchasedDate.value;
+  if (!editing) { state.toBuy.push(item); state.itemOrder.push(item.id); }
+  initial = values(); dialog.close(); save(editing ? '保存しました' : '品物を追加しました');
 });
-
 $('#delete-item').addEventListener('click', () => {
-  if (!editing || !confirm(`「${editing.name}」を削除しますか？`)) return;
-  const item = editing;
-  const inToBuy = state.toBuy.includes(item);
-  const list = inToBuy ? state.toBuy : state.purchased;
-  const index = list.indexOf(item);
-  list.splice(index, 1);
-  initial = values();
-  dialog.close();
+  if (!editable() || !editing || !confirm(`「${editing.item.name}」を削除しますか？`)) return;
+  const { item, bucket } = editing, gone = state[bucket];
+  const index = gone.indexOf(item), order = state.itemOrder.indexOf(item.id);
+  gone.splice(index, 1); state.itemOrder.splice(order, 1);
+  initial = values(); dialog.close();
   save('削除しました', () => {
-    (inToBuy ? state.toBuy : state.purchased).splice(index, 0, item);
+    if (!editable()) return;
+    if (item.category && !state.categories.includes(item.category)) item.category = '';
+    gone.splice(Math.min(index, gone.length), 0, item);
+    state.itemOrder.splice(Math.min(order, state.itemOrder.length), 0, item.id);
     save('元に戻しました');
   });
 });
-
-$('#buy-again').addEventListener('click', () => {
-  if (!editing) return;
-  initial = values();
-  dialog.close();
-  if (state.toBuy.some(i => i.name === editing.name)) { toast(`「${editing.name}」はすでに買うものにあります`); return; }
-  addToBuy(editing.name, editing.category);
-});
-
 wireDialogs(d => d === dialog && values() !== initial);
 
 const categories = categoryManager({
-  dialog: $('#category-dialog'),
-  get: () => state.categories,
+  dialog: $('#category-dialog'), get: () => state.categories, twoWayOrder: true,
   set(names, change) {
+    if (!editable()) return;
     state.categories = names;
-    if (change) for (const item of [...state.toBuy, ...state.purchased]) if (item.category === change.from) item.category = change.to;
     if (change) {
-      if (ui.category === change.from) ui.category = change.to || '*';
-      if (ui.addCategory === change.from) ui.addCategory = change.to || null;
-      remember();
+      for (const { item } of groceryItems(state)) if (item.category === change.from) item.category = change.to;
+      if (ui.category === change.from) { ui.category = change.to; remember(); }
     }
   },
-  countFor: name => [...state.toBuy, ...state.purchased].filter(i => i.category === name).length,
+  countFor: name => groceryItems(state).filter(({ item }) => item.category === name).length,
   onChange: () => save(),
 });
 
-// ─── Wiring ──────────────────────────────────────────────────────────
-function focusAdd() {
-  ui.view = 'tobuy';
-  remember();
-  render();
-  $('#add-name').focus();
-  $('#add-form').scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-}
-window.homesQuickAdd = focusAdd;
-
-$('#add-form').addEventListener('submit', event => {
-  event.preventDefault();
-  const input = $('#add-name');
-  const category = $('#add-category').value;
-  if (addToBuy(input.value, category)) {
-    ui.addCategory = category;
-    remember();
-    input.value = '';
-  }
-  input.focus();
-});
-$('#tobuy-list').addEventListener('click', event => {
-  const buy = event.target.closest('[data-buy]');
-  if (buy) return markBought(buy.dataset.buy);
-  const edit = event.target.closest('[data-edit]');
-  if (edit) openEditor(edit.dataset.edit);
-});
-$('#bought-list').addEventListener('click', event => {
-  const edit = event.target.closest('[data-edit]');
-  if (edit) openEditor(edit.dataset.edit);
-});
-for (const button of document.querySelectorAll('[data-view]')) {
-  button.addEventListener('click', () => { ui.view = button.dataset.view; remember(); render(); });
-}
-$('#filter-category').addEventListener('change', event => { ui.category = event.target.value; remember(); render(); });
-$('#add-category').addEventListener('change', event => { ui.addCategory = event.target.value; remember(); });
-$('#sort').addEventListener('change', event => { ui.sort = event.target.value; remember(); render(); });
-$('#open-add').addEventListener('click', focusAdd);
-$('#menu-add').addEventListener('click', focusAdd);
 $('#open-categories').addEventListener('click', () => categories.open());
+$('#manage-tabs').addEventListener('click', () => categories.open());
+$('#open-add').addEventListener('click', () => openEditor(null));
+$('#menu-add').addEventListener('click', () => openEditor(null));
+window.homesQuickAdd = () => openEditor(null, true);
 $('#menu-list').addEventListener('click', () => scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
 $('#sign-out').addEventListener('click', async () => {
-  if (!confirm('ログアウトしますか？')) return;
-  await signOutUser();
-  if (window === top) location.replace('/');
+  if (confirm('ログアウトしますか？')) { await signOutUser(); if (window === top) location.replace('/'); }
 });
-// Days move on: re-render when the page comes back, so 「あと◯日」 stays right.
+$('#reorder-items').addEventListener('click', () => { ui.reorder = !ui.reorder; render(); });
+for (const button of document.querySelectorAll('[data-view]')) {
+  button.addEventListener('click', () => { ui.view = button.dataset.view; ui.reorder = false; remember(); render(); });
+}
+tabs.addEventListener('click', event => {
+  const button = event.target.closest('[data-tab-index]');
+  if (!button) return;
+  ui.category = [null, ...state.categories, ''][Number(button.dataset.tabIndex)];
+  remember(); render();
+});
+list.addEventListener('click', event => {
+  if (suppressClick && event.detail > 0) { suppressClick = false; event.preventDefault(); return; }
+  const button = event.target.closest('button');
+  if (!button || button.disabled || !editable()) return;
+  if ('stockId' in button.dataset) {
+    const entry = byId(button.dataset.stockId);
+    if (entry) { entry.item.inStock = !entry.inStock; save(); }
+  } else if ('buyId' in button.dataset) toggleBuy(button.dataset.buyId);
+  else if ('purchased' in button.dataset) markBought(button.dataset.purchased);
+  else if ('editId' in button.dataset) openEditor(byId(button.dataset.editId));
+  else if ('move' in button.dataset && ui.reorder) {
+    const entry = byId(button.dataset.id);
+    if (!entry) return;
+    const siblings = groceryItems(state).filter(({ item }) => item.category === entry.item.category).map(({ item }) => item.id);
+    const next = moveItem(state.itemOrder, siblings, entry.item.id, Number(button.dataset.move));
+    if (next) { state.itemOrder = next; save('順番を保存しました'); }
+  }
+});
+
+list.addEventListener('pointerdown', event => {
+  suppressClick = false;
+  const button = event.target.closest('[data-stock-id]');
+  if (!button || doc.blocked || ui.reorder || !event.isPrimary || event.button !== 0) return;
+  const row = button.closest('.grocery-row');
+  gesture = { row, button, pointerId: event.pointerId, id: button.dataset.stockId, startX: event.clientX, startY: event.clientY };
+});
+function measure(event) {
+  const step = swipeStep(gesture, event.clientX - gesture.startX, event.clientY - gesture.startY);
+  const wasHorizontal = gesture.horizontal;
+  gesture = step;
+  if (step.horizontal && !step.cancelled) {
+    if (!wasHorizontal && !step.button.hasPointerCapture(event.pointerId)) step.button.setPointerCapture(event.pointerId);
+    step.row.classList.add('is-sliding');
+    step.row.closest('li').classList.toggle('is-armed', Boolean(step.armed));
+    step.row.style.setProperty('--grocery-offset', `${step.offset}px`);
+  }
+}
+document.addEventListener('pointermove', event => { if (gesture?.pointerId === event.pointerId) measure(event); });
+function endGesture(event) {
+  if (gesture?.pointerId !== event.pointerId) return;
+  if (event.type === 'pointerup' && !gesture.cancelled) measure(event);
+  const step = gesture;
+  gesture = null;
+  step.row.classList.remove('is-sliding');
+  step.row.closest('li').classList.remove('is-armed');
+  step.row.style.removeProperty('--grocery-offset');
+  // Only suppress that physical gesture's click; keyboard clicks still work.
+  suppressClick = Boolean(step.horizontal || step.cancelled);
+  if (event.type === 'pointerup' && shouldToggleBuy(step)) toggleBuy(step.id);
+  else if (delayedRender && suppressClick) render();
+  else if (delayedRender) setTimeout(render, 0);
+}
+document.addEventListener('pointerup', endGesture);
+document.addEventListener('pointercancel', endGesture);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
 
 watchAuth({
   async onSignedIn() {
     try {
-      const data = await doc.load();
-      state = { toBuy: data.toBuy, purchased: data.purchased, categories: data.categories };
+      state = readGrocery(await doc.load());
       loaded = true;
       $('#loading').hidden = true;
       $('#app-main').hidden = false;

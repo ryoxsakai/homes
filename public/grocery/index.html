@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="/shared/works-dialogs.css?v=fb98327c">
   <link rel="stylesheet" href="/shared/homes-theme.css?v=menu-unified-1">
   <link rel="stylesheet" href="/shared/homes-app.css?v=menu-unified-1">
+  <link rel="stylesheet" href="/grocery/inventory.css?v=1">
 </head>
 <body class="homes-page grocery-page">
   <header class="page-header works-header">
@@ -42,52 +43,37 @@
       <div class="homes-heading-actions">
         <button id="open-add" class="homes-btn homes-btn-primary" type="button">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-          <span>買うものを追加</span>
+          <span>品物を追加</span>
         </button>
       </div>
     </div>
 
     <p id="save-status" class="homes-save-status" role="status" aria-live="polite"></p>
 
-    <section class="homes-toolbar" aria-label="食料品の表示">
-      <div class="homes-segment" role="group" aria-label="リスト">
-        <button type="button" data-view="tobuy" aria-pressed="true">買うもの<span id="count-tobuy" class="homes-count">0</span></button>
-        <button type="button" data-view="bought" aria-pressed="false">買ったもの<span id="count-bought" class="homes-count">0</span></button>
+    <section class="grocery-controls" aria-label="食料品の表示">
+      <div class="homes-toolbar grocery-toolbar">
+        <div class="homes-segment" role="group" aria-label="リスト">
+          <button type="button" data-view="inventory" aria-pressed="true">在庫一覧</button>
+          <button type="button" data-view="buy" aria-pressed="false">買うもの<span id="count-buy" class="homes-count">0</span></button>
+        </div>
+        <button id="reorder-items" class="homes-btn homes-btn-quiet" type="button" aria-pressed="false">並べ替え</button>
       </div>
-      <div class="homes-toolbar-end">
-        <label><span class="homes-sr-only">カテゴリで絞り込み</span><select id="filter-category"></select></label>
-        <label data-for="bought"><span class="homes-sr-only">並べ替え</span>
-          <select id="sort">
-            <option value="expiry">期限が近い順</option>
-            <option value="bought-desc">購入日が新しい順</option>
-            <option value="name">品名順</option>
-          </select>
-        </label>
+      <div class="grocery-category-line">
+        <div id="category-tabs" class="grocery-tabs" role="group" aria-label="カテゴリ"></div>
+        <button id="manage-tabs" class="homes-btn homes-btn-quiet" type="button" aria-label="カテゴリの作成・並べ替え" aria-haspopup="dialog" aria-controls="category-dialog">カテゴリ設定</button>
       </div>
     </section>
-
-    <!-- 買うもの -->
-    <section id="view-tobuy" aria-label="買うもの">
-      <form id="add-form" class="homes-inline-form" autocomplete="off">
-        <label><span class="homes-sr-only">品名</span><input id="add-name" maxlength="200" placeholder="買うもの（例：牛乳）" enterkeyhint="done"></label>
-        <label><span class="homes-sr-only">カテゴリ</span><select id="add-category"></select></label>
-        <button class="homes-btn homes-btn-primary" type="submit">追加</button>
-      </form>
-      <div id="tobuy-list"></div>
-      <div id="tobuy-empty" class="homes-empty" hidden><p>買うものはありません</p></div>
-    </section>
-
-    <!-- 買ったもの -->
-    <section id="view-bought" aria-label="買ったもの" hidden>
-      <ul id="bought-list" class="homes-panel"></ul>
-      <div id="bought-empty" class="homes-empty" hidden><p>買ったものはまだありません。買うものの ◯ を押すとここに移ります。</p></div>
+    <p id="inventory-hint" class="homes-hint grocery-hint">タップで「ある／ない」。右に軽くスライドすると「買う」を切り替えます。</p>
+    <section aria-label="品物一覧">
+      <div id="inventory-list"></div>
+      <div id="inventory-empty" class="homes-empty" hidden><p></p></div>
     </section>
 
     <nav class="homes-bottom-menu" aria-label="食料品メニュー">
       <button id="menu-list" type="button" aria-current="page" aria-label="一覧の先頭へ" title="一覧の先頭へ">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg>
       </button>
-      <button id="menu-add" class="homes-menu-add" type="button" aria-label="買うものを追加" title="買うものを追加">
+      <button id="menu-add" class="homes-menu-add" type="button" aria-label="品物を追加" title="品物を追加">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
       </button>
     </nav>
@@ -97,7 +83,7 @@
   <dialog id="item-dialog" class="homes-dialog" aria-labelledby="item-title">
     <form id="item-form" method="dialog" novalidate>
       <div class="homes-dialog-head">
-        <h3 id="item-title">買うもの</h3>
+        <h3 id="item-title">品物</h3>
         <button class="homes-icon-btn" type="button" data-close aria-label="閉じる">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
         </button>
@@ -105,27 +91,23 @@
       <div class="homes-dialog-body">
         <label class="homes-field"><span>品名<em>必須</em></span><input name="name" required maxlength="200"></label>
         <label class="homes-field"><span>カテゴリ</span><select name="category"></select></label>
-        <div id="bought-fields" class="homes-field-group">
-          <label class="homes-field"><span>購入日</span><input name="purchasedDate" type="date" required></label>
-          <div class="homes-field">
-            <span id="expiry-label">賞味期限</span>
-            <div class="homes-field-inline">
-              <input name="expiryDate" type="date" aria-labelledby="expiry-label">
-              <button id="clear-expiry" class="homes-btn homes-btn-quiet" type="button">なし</button>
-            </div>
-            <div class="homes-presets" role="group" aria-label="購入日からの日数で設定">
-              <button type="button" data-days="3">3日</button>
-              <button type="button" data-days="7">1週間</button>
-              <button type="button" data-days="14">2週間</button>
-              <button type="button" data-days="30">1か月</button>
-            </div>
-          </div>
+        <div class="grocery-form-switches">
+          <label class="grocery-switch"><input name="inStock" type="checkbox" role="switch"><span>在庫あり</span></label>
+          <label class="grocery-switch"><input name="buyChecked" type="checkbox" role="switch"><span>買うものに入れる</span></label>
+          <label class="grocery-switch"><input name="expiryEnabled" type="checkbox" role="switch" aria-controls="expiry-fields"><span>賞味・消費期限を設定</span></label>
         </div>
+        <div id="expiry-fields" class="grocery-form-date">
+          <label class="homes-field"><span>期限の種類</span><select name="expiryKind"><option value="best-before">賞味期限</option><option value="use-by">消費期限</option></select></label>
+          <label class="homes-field"><span>期限日</span><input name="expiryDate" type="date"></label>
+        </div>
+        <details id="purchase-details" class="grocery-purchase-details" hidden>
+          <summary>前回の購入記録</summary>
+          <label class="homes-field"><span>購入日</span><input name="purchasedDate" type="date"></label>
+        </details>
         <p id="item-meta" class="homes-meta"></p>
       </div>
       <div class="homes-dialog-foot">
         <button id="delete-item" class="homes-btn homes-btn-danger" type="button">削除</button>
-        <button id="buy-again" class="homes-btn homes-btn-quiet" type="button">もう一度買う</button>
         <span class="homes-spacer"></span>
         <button class="homes-btn" type="button" data-close>キャンセル</button>
         <button class="homes-btn homes-btn-primary" type="submit">保存</button>
@@ -146,12 +128,12 @@
         <ul class="homes-manage-list"></ul>
         <form class="homes-manage-add"><input maxlength="50" placeholder="新しいカテゴリ（例：冷凍食品）" aria-label="新しいカテゴリ"><button class="homes-btn" type="submit">追加</button></form>
       </section>
-      <p class="homes-hint">買うものはこの順番で並びます。お店を回る順にしておくと便利です。名前を変えると登録済みの品目にも反映されます。</p>
+      <p class="homes-hint">ここで追加したカテゴリが一覧のタブになります。矢印で順番を変更できます。カテゴリを削除しても品物は消えず「未分類」に移ります。</p>
     </div>
   </dialog>
 
   <div id="toast" class="homes-toast" role="status" aria-live="polite" hidden></div>
 
-  <script type="module" src="/shared/service-entry.mjs?v=6" data-service-app="/grocery/app.mjs?v=2"></script>
+  <script type="module" src="/shared/service-entry.mjs?v=6" data-service-app="/grocery/app.mjs?v=3"></script>
 </body>
 </html>
